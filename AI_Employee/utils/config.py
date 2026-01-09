@@ -90,6 +90,26 @@ class Config:
         """Path to the processed IDs tracker file."""
         return self.vault_path / '.processed_ids.json'
 
+    @property
+    def pending_approval_path(self) -> Path:
+        """Path to the Pending_Approval folder (Silver tier)."""
+        return self.vault_path / 'Pending_Approval'
+
+    @property
+    def approved_path(self) -> Path:
+        """Path to the Approved folder (Silver tier)."""
+        return self.vault_path / 'Approved'
+
+    @property
+    def rejected_path(self) -> Path:
+        """Path to the Rejected folder (Silver tier)."""
+        return self.vault_path / 'Rejected'
+
+    @property
+    def logs_path(self) -> Path:
+        """Path to the Logs folder (Silver tier)."""
+        return self.vault_path / 'Logs'
+
     def validate(self) -> list[str]:
         """
         Validate the configuration.
@@ -130,10 +150,23 @@ class Config:
         """
         Create vault folder structure if it doesn't exist.
 
-        Creates: Inbox/, Needs_Action/, Done/, Plans/
+        Bronze tier: Creates Inbox/, Needs_Action/, Done/, Plans/
+        Silver tier: Also creates Pending_Approval/, Approved/, Rejected/, Logs/
         """
-        for folder in [self.inbox_path, self.needs_action_path,
-                       self.done_path, self.plans_path]:
+        # Bronze tier folders
+        bronze_folders = [self.inbox_path, self.needs_action_path,
+                         self.done_path, self.plans_path]
+        
+        # Silver tier folders (optional - created if needed)
+        silver_folders = [
+            self.vault_path / 'Pending_Approval',
+            self.vault_path / 'Approved',
+            self.vault_path / 'Rejected',
+            self.vault_path / 'Logs'
+        ]
+        
+        # Create all folders
+        for folder in bronze_folders + silver_folders:
             folder.mkdir(parents=True, exist_ok=True)
 
     def __repr__(self) -> str:

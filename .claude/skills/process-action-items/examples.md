@@ -1,6 +1,6 @@
 # Process Action Items – Examples
 
-These examples demonstrate how the `process-action-items` Skill processes different types of action items in the Personal AI Employee system (Bronze tier).
+These examples demonstrate how the `process-action-items` Skill processes different types of action items in the Personal AI Employee system for both Bronze and Silver tiers.
 
 ---
 
@@ -346,3 +346,313 @@ source_id: EMAIL_20260109_12345
 ---
 
 These examples demonstrate the skill's robustness in handling various scenarios while maintaining consistency and reliability in Bronze tier action item processing.
+
+---
+
+## Example 6: Silver Tier - Email Action with Approval Request
+
+### Input: Action Item File
+
+**File**: `/Needs_Action/EMAIL_20260109_67890.md`
+
+```markdown
+---
+type: email
+from: newclient@startup.com
+subject: Urgent: Need proposal by Friday
+received: 2026-01-09T14:30:00Z
+priority: high
+status: pending
+source_id: EMAIL_20260109_67890
+---
+
+## Content
+
+Hi there,
+
+We're a startup and need a proposal for your services. Can you send it by Friday? We're in a rush to make a decision.
+
+Best,
+Sarah Chen
+New Startup Inc.
+```
+
+### Skill Execution (Silver Tier)
+
+1. **Reads** the action item file
+2. **Reads** `Company_Handbook.md` for rules and approval thresholds
+3. **Analyzes**:
+   - Type: Email request requiring reply
+   - Priority: High (urgent deadline)
+   - Action needed: Send email reply with proposal
+   - Approval required: YES (email to new contact, exceeds auto-approve threshold)
+4. **Creates** plan file in `/Plans/`
+5. **Creates** approval request in `/Pending_Approval/` (Silver tier)
+6. **Logs** approval request to audit log
+7. **Updates** Dashboard.md
+
+### Output: Generated Plan (with Approval Reference)
+
+**File**: `/Plans/PLAN_proposal_request_2026-01-09.md`
+
+```markdown
+---
+type: action_plan
+source: EMAIL
+created: 2026-01-09T14:35:00Z
+priority: HIGH
+status: pending_approval
+approval_request: APPROVAL_email_proposal_newclient_2026-01-09.md
+---
+
+# Action Plan: Send Proposal to New Startup Inc.
+
+## Source Information
+- From: newclient@startup.com (New Startup Inc.)
+- Received: 2026-01-09T14:30:00Z
+- Original Item: `/Needs_Action/EMAIL_20260109_67890.md`
+
+## Analysis
+
+High priority request from new client requiring urgent proposal. Deadline: Friday. This is a new contact, so approval required before sending email reply.
+
+## Recommended Actions
+
+- [x] Identify client: New Startup Inc. (newclient@startup.com)
+- [x] Determine proposal scope: Review request details
+- [ ] Generate proposal document
+- [ ] **APPROVAL REQUIRED**: Send email with proposal attachment
+- [ ] Follow up if no response by Thursday
+
+## Approval Status
+
+**External action requires approval**: Email send to new contact
+- Approval request: `/Pending_Approval/APPROVAL_email_proposal_newclient_2026-01-09.md`
+- Status: Pending human review
+- Once approved, use `@execute-approved-actions` skill to send email via MCP server
+```
+
+### Output: Approval Request (Silver Tier)
+
+**File**: `/Pending_Approval/APPROVAL_email_proposal_newclient_2026-01-09.md`
+
+```markdown
+---
+type: approval_request
+action: send_email
+plan_id: /Plans/PLAN_proposal_request_2026-01-09.md
+source_action_item: /Needs_Action/EMAIL_20260109_67890.md
+created: 2026-01-09T14:35:00Z
+expires: 2026-01-10T14:35:00Z
+status: pending
+priority: high
+mcp_server: email
+mcp_tool: send_email
+---
+
+# Approval Request: Send Email Reply
+
+## Action Summary
+
+**Type**: Send email reply with proposal attachment
+**Reason**: New client requested proposal with Friday deadline (high priority)
+**Target**: newclient@startup.com
+**Priority**: high
+
+## Action Details
+
+### Parameters
+
+- **To**: newclient@startup.com
+- **Subject**: Proposal for New Startup Inc. - Services
+- **Body**: [Draft email body with proposal details]
+- **Attachment**: /Vault/Proposals/2026-01_NewStartupInc.pdf (to be generated)
+
+### Content Preview
+
+Hi Sarah,
+
+Thank you for reaching out. I've prepared a proposal for your services...
+
+[Full email body preview]
+
+## Approval Instructions
+
+### To Approve This Action
+
+1. Review email content and proposal attachment
+2. Verify recipient is correct
+3. Move this file to `/Approved/` folder
+4. The `@execute-approved-actions` skill will send the email via MCP server
+
+### To Reject This Action
+
+Move this file to `/Rejected/` folder with rejection reason.
+
+## Execution Status
+
+- Status: pending
+- Awaiting human approval
+
+## Audit Trail
+
+- Created: 2026-01-09T14:35:00Z by @process-action-items
+```
+
+### Audit Log Entry
+
+**File**: `/Logs/2026-01-09.json`
+
+```json
+{
+  "date": "2026-01-09",
+  "actions": [
+    {
+      "timestamp": "2026-01-09T14:35:00Z",
+      "action_type": "approval_request_created",
+      "actor": "claude_code",
+      "target": "newclient@startup.com",
+      "parameters": {
+        "action": "send_email",
+        "subject": "Proposal for New Startup Inc.",
+        "priority": "high"
+      },
+      "approval_status": "pending",
+      "approval_file": "APPROVAL_email_proposal_newclient_2026-01-09.md",
+      "plan_reference": "/Plans/PLAN_proposal_request_2026-01-09.md",
+      "result": "pending_approval",
+      "error": null
+    }
+  ]
+}
+```
+
+---
+
+## Example 7: Silver Tier - LinkedIn Post with Approval
+
+### Input: Action Item File
+
+**File**: `/Needs_Action/LINKEDIN_weekly_post_2026-01-09.md`
+
+```markdown
+---
+type: social_media
+source: linkedin
+subject: Weekly business update post
+received: 2026-01-09T09:00:00Z
+priority: medium
+status: pending
+trigger: scheduled
+---
+
+## Content
+
+Scheduled LinkedIn post for weekly business update. Should include:
+- Recent client success story
+- Upcoming product launch
+- Industry insights
+
+## Metadata
+- Post type: Business update
+- Visibility: Public
+- Hashtags: #BusinessGrowth #TechInnovation
+```
+
+### Skill Execution (Silver Tier)
+
+1. **Reads** action item and `Company_Handbook.md`
+2. **Determines**: LinkedIn post requires approval (all social media posts)
+3. **Creates** plan with LinkedIn posting steps
+4. **Creates** approval request with post content
+5. **Logs** to audit log
+
+### Output: Approval Request for LinkedIn Post
+
+**File**: `/Pending_Approval/APPROVAL_linkedin_weekly_post_2026-01-09.md`
+
+```markdown
+---
+type: approval_request
+action: post_linkedin
+plan_id: /Plans/PLAN_linkedin_weekly_update_2026-01-09.md
+created: 2026-01-09T09:05:00Z
+expires: 2026-01-10T09:05:00Z
+status: pending
+priority: medium
+mcp_server: linkedin
+mcp_tool: create_post
+---
+
+# Approval Request: LinkedIn Post
+
+## Action Summary
+
+**Type**: Create LinkedIn business update post
+**Reason**: Scheduled weekly business update (automated)
+**Target**: LinkedIn company page / personal profile
+**Priority**: medium
+
+## Action Details
+
+### Parameters
+
+- **Content**: [Generated post content with client success, product launch, insights]
+- **Visibility**: public
+- **Hashtags**: #BusinessGrowth #TechInnovation
+- **Media**: [optional image attachment]
+
+### Content Preview
+
+🚀 Excited to share our latest client success story...
+
+[Full post content preview]
+
+## Approval Instructions
+
+**Move to `/Approved/` to post, or `/Rejected/` to cancel.**
+```
+
+---
+
+## Example 8: Silver Tier - Auto-Approval Threshold (No Approval Needed)
+
+### Scenario
+
+Email reply to known contact, below auto-approve threshold (e.g., < 100 words, known contact, no attachments).
+
+### Skill Execution
+
+1. **Reads** action item and `Company_Handbook.md` approval thresholds
+2. **Determines**: Action meets auto-approval criteria
+3. **Creates** plan
+4. **Creates** approval request but marks as `auto_approved: true`
+5. **Immediately** moves approval to `/Approved/` (or creates execution file)
+6. **Logs** with `auto_approved: true` flag
+
+### Output: Auto-Approved Action
+
+**Audit Log Entry**:
+
+```json
+{
+  "timestamp": "2026-01-09T15:00:00Z",
+  "action_type": "send_email",
+  "target": "knownclient@example.com",
+  "approval_status": "auto_approved",
+  "auto_approve_reason": "Known contact, simple reply, below word limit",
+  "mcp_server": "email",
+  "result": "pending_execution"
+}
+```
+
+**Note**: Even auto-approved actions should still be logged and tracked.
+
+---
+
+These Silver tier examples demonstrate:
+- Approval request creation for external actions
+- Integration with MCP servers for execution
+- Audit logging requirements
+- Auto-approval threshold handling
+- Complete HITL workflow from detection → approval → execution

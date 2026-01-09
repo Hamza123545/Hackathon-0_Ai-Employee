@@ -28,7 +28,9 @@ Use this skill whenever:
 - Action items need to be analyzed and converted into structured plans
 - System status needs refreshing based on watcher activity
 
-**Bronze Tier Scope**: This skill focuses on **read and write operations within the vault only**. No external actions (sending emails, making payments) are performed.
+**Tier Scope**:
+- **Bronze Tier**: Read and write operations within the vault only. No external actions.
+- **Silver Tier**: Creates approval requests in `/Pending_Approval/` for external actions requiring MCP servers. Never executes external actions directly.
 
 ---
 
@@ -49,16 +51,20 @@ When processing action items, you must:
    - Processing rules and guidelines
    - Priority classification rules
    - Response templates or formats
-   - Auto-approval thresholds (for future Silver/Gold tiers)
+   - Approval thresholds and auto-approval rules (Silver tier)
+   - MCP server capabilities and configuration
+   - Permission boundaries (what requires approval vs. auto-approve)
 
 ### 2.2 Analyze and Plan
 
 For each action item, create a structured analysis:
 
-- **Identify the action type**: Email response, file processing, information request, etc.
+- **Identify the action type**: Email response, file processing, information request, social media post, payment, etc.
 - **Determine priority**: Based on keywords, sender, content, and Company_Handbook rules
-- **Extract key information**: Dates, deadlines, required actions, contacts
+- **Extract key information**: Dates, deadlines, required actions, contacts, amounts, recipients
 - **Check for duplicates**: Verify if this item or similar was already processed
+- **Determine if external action needed**: Check if action requires MCP server (email, social media, payments)
+- **Check approval requirements**: Based on Company_Handbook.md permission boundaries
 
 ### 2.3 Create Plan.md Files
 
@@ -95,7 +101,13 @@ status: pending
 [What should happen next - manual review, scheduled follow-up, etc.]
 ```
 
-**Important**: Plans should be actionable, with clear checkboxes. For Bronze tier, these are read-only recommendations (no automated execution).
+**Important**: Plans should be actionable, with clear checkboxes. 
+
+**For Silver Tier Plans**: If the plan requires external actions (sending emails, posting to LinkedIn, payments), you MUST:
+1. Create an approval request file in `/Pending_Approval/` (see Section 2.6)
+2. Reference the approval request in the plan
+3. DO NOT execute external actions directly - they require human approval
+4. Mark the plan status as `pending_approval` if external actions are needed
 
 ### 2.4 Update Dashboard.md
 
@@ -126,22 +138,79 @@ After processing action items, update `Dashboard.md` with:
 - Last Check: [timestamp]
 ```
 
-### 2.5 Archive Processed Items
+### 2.5 Create Approval Requests (Silver Tier)
 
-After creating the plan:
+**IMPORTANT**: For Silver tier, if a plan requires external actions (email sending, social media posting, payments, etc.), you MUST create an approval request BEFORE archiving the item.
+
+**Approval Request Creation**:
+
+1. **Determine if approval needed**: Check if action requires:
+   - Email sending (except auto-approved threshold)
+   - Social media posting (LinkedIn, Twitter, etc.)
+   - Payments or financial transactions
+   - Browser automation actions
+   - Any action listed in Company_Handbook.md as requiring approval
+
+2. **Create approval request file** in `/Pending_Approval/`:
+   ```markdown
+   ---
+   type: approval_request
+   action: [send_email|post_linkedin|make_payment|browser_action]
+   plan_id: [reference to Plan.md file]
+   source_action_item: [reference to original Needs_Action file]
+   created: [ISO_TIMESTAMP]
+   expires: [ISO_TIMESTAMP - 24 hours default]
+   status: pending
+   priority: [high|medium|low]
+   ---
+   
+   ## Action Request
+   
+   **Action Type**: [detailed description]
+   **Reason**: [why this action is needed]
+   **Target**: [recipient/account/page]
+   **Parameters**: [any relevant details - amounts, content preview, etc.]
+   
+   ## To Approve
+   Move this file to `/Approved/` folder to execute.
+   
+   ## To Reject
+   Move this file to `/Rejected/` folder.
+   
+   ## Related Files
+   - Plan: `/Plans/[plan_filename].md`
+   - Source: `/Needs_Action/[original_filename].md`
+   ```
+
+3. **Update plan file** to reference approval request:
+   - Add approval request filename to plan metadata
+   - Update plan status to `pending_approval`
+   - Add note about approval requirement
+
+4. **Log approval request** (Silver tier mandatory):
+   - Create entry in `/Logs/YYYY-MM-DD.json`
+   - Include: timestamp, action_type, approval_request_filename, plan_reference
+
+**Auto-Approval Thresholds**: Only create approval requests if action exceeds auto-approval thresholds defined in `Company_Handbook.md`. For actions below threshold, mark as `auto_approved` and proceed (but still log).
+
+### 2.6 Archive Processed Items
+
+After creating the plan (and approval request if needed):
 
 1. **Move processed file** from `/Needs_Action/` to `/Done/`
 2. **Add completion metadata** to the moved file:
    - Processed timestamp
    - Plan file reference
+   - Approval request reference (if applicable)
    - Processing notes
 
 ---
 
 ## 3. File Structure Requirements
 
-### 3.1 Vault Structure (Bronze Tier Minimum)
+### 3.1 Vault Structure (Bronze + Silver Tier)
 
+**Bronze Tier Minimum**:
 ```
 vault/
 ├── Dashboard.md              # System status (updated by this skill)
@@ -153,6 +222,24 @@ vault/
 │   └── PLAN_*.md
 └── Done/                     # Archive: Processed items
     └── [original_filename]_[timestamp].md
+```
+
+**Silver Tier Extended** (includes Bronze +):
+```
+vault/
+├── Dashboard.md              # System status
+├── Company_Handbook.md       # Rules, MCP config, approval thresholds
+├── Needs_Action/             # Input: New items to process
+├── Plans/                    # Output: Generated plans
+├── Pending_Approval/         # SILVER: Approval requests waiting for human review
+│   └── APPROVAL_*.md
+├── Approved/                 # SILVER: Human-approved actions ready for execution
+│   └── APPROVAL_*.md
+├── Rejected/                 # SILVER: Human-rejected actions archive
+│   └── APPROVAL_*.md
+├── Done/                     # Archive: Processed items
+└── Logs/                     # SILVER: Mandatory audit logs
+    └── YYYY-MM-DD.json
 ```
 
 ### 3.2 Action Item File Format
@@ -205,9 +292,16 @@ status: pending
    - Move processed file to `/Done/`
    - Add processing metadata
 
-6. **Log Activity** (Optional for Bronze)
-   - Basic logging to console or simple log file
-   - Record what was processed and when
+6. **Create Approval Requests** (Silver Tier - if external actions needed)
+   - Check if plan requires external actions
+   - Create approval request in `/Pending_Approval/` if needed
+   - Update plan to reference approval request
+   - DO NOT execute external actions directly
+
+7. **Log Activity** (Bronze: Optional, Silver: Mandatory)
+   - **Bronze**: Basic logging to console or simple log file
+   - **Silver**: Structured JSON audit log in `/Logs/YYYY-MM-DD.json`
+   - Record: timestamp, action_type, item_processed, plan_created, approval_requested (if applicable)
 
 ---
 
@@ -237,9 +331,9 @@ status: pending
 
 ---
 
-## 6. Bronze Tier Limitations
+## 6. Tier Capabilities
 
-For Bronze tier, this skill:
+### Bronze Tier
 
 ✅ **Can Do**:
 - Read from vault
@@ -248,12 +342,29 @@ For Bronze tier, this skill:
 - Move files within vault
 - Analyze and prioritize
 
-❌ **Cannot Do** (Silver/Gold tiers):
+❌ **Cannot Do**:
 - Send emails automatically
 - Execute external actions
 - Create approval workflows
 - Interact with MCP servers for actions
-- Schedule follow-ups
+
+### Silver Tier (EXTENDS Bronze)
+
+✅ **Can Do** (Bronze capabilities +):
+- Create approval request files in `/Pending_Approval/`
+- Determine if actions require approval based on Company_Handbook.md thresholds
+- Log all activities to structured audit logs (`/Logs/YYYY-MM-DD.json`)
+- Reference MCP server capabilities in plans
+- Create plans that specify which MCP tools should be used
+- Handle approval request lifecycle (pending → approved/rejected)
+
+❌ **Cannot Do**:
+- Execute external actions directly (MUST go through approval workflow)
+- Call MCP servers without human approval
+- Skip approval workflow for sensitive actions
+- Auto-execute payments, email sends, or social media posts without approval
+
+**Note**: Use the `execute-approved-actions` skill to handle approved actions and invoke MCP servers.
 
 ---
 
@@ -285,7 +396,7 @@ To test this skill:
 Check the Needs_Action folder and process any new items. Create plans for each one.
 ```
 
-### Skill Execution:
+### Skill Execution (Bronze Tier):
 1. Reads `/Needs_Action/EMAIL_12345.md` (from Gmail watcher)
 2. Reads `Company_Handbook.md` for email response rules
 3. Creates `/Plans/PLAN_email_response_2026-01-09.md` with:
@@ -295,11 +406,35 @@ Check the Needs_Action folder and process any new items. Create plans for each o
 4. Updates `Dashboard.md` with new pending plan count
 5. Moves `EMAIL_12345.md` to `/Done/`
 
-### Expected Output:
+### Skill Execution (Silver Tier - with External Actions):
+1. Reads `/Needs_Action/EMAIL_12345.md` (from Gmail watcher)
+2. Reads `Company_Handbook.md` for email response rules and approval thresholds
+3. Creates `/Plans/PLAN_email_response_2026-01-09.md` with:
+   - Analysis of email request
+   - Recommended actions (including "Send email reply")
+   - Priority classification
+4. **Creates approval request** `/Pending_Approval/APPROVAL_email_reply_12345.md`:
+   - Action: send_email
+   - Target: sender@example.com
+   - Parameters: subject, body, attachments
+   - References plan file
+5. Updates plan to reference approval request and mark status as `pending_approval`
+6. Logs approval request to `/Logs/YYYY-MM-DD.json`
+7. Updates `Dashboard.md` with pending approval count
+8. Moves `EMAIL_12345.md` to `/Done/`
+
+### Expected Output (Bronze):
 - One or more `Plan.md` files created
 - Dashboard.md reflects new activity
 - Action items archived to `/Done/`
-- Clear summary of what was processed
+
+### Expected Output (Silver):
+- Plan.md files created with external action recommendations
+- Approval request files in `/Pending_Approval/` (for actions requiring approval)
+- Audit log entries for approval requests
+- Dashboard showing pending approvals
+- Action items archived to `/Done/`
+- Human reviews and approves, moves approval to `/Approved/`, then `@execute-approved-actions` skill executes
 
 ---
 
