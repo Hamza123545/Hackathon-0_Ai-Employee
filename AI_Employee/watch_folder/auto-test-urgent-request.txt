@@ -1,0 +1,22 @@
+URGENT: Automatic Dashboard Update Test
+
+Subject: Testing automatic Dashboard updates
+From: Test System
+Date: 2026-01-09
+Priority: High
+
+This test file verifies that:
+1. Watcher detects this file and creates an action item
+2. Dashboard automatically updates Recent Activity
+3. Dashboard automatically updates Quick Stats
+4. All updates happen without manual intervention
+
+Expected behavior:
+- Action item created in /Needs_Action/ within 5 seconds
+- Dashboard shows "Pending Items: 1"
+- After processing with Claude Code:
+  - Plan created in /Plans/
+  - Item moved to /Done/
+  - Dashboard shows "Plans created today: 1"
+  - Dashboard shows "Items processed today: 1"
+  - Dashboard shows "Recent Activity" with plan creation and item processing

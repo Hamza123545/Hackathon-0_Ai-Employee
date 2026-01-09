@@ -1,0 +1,20 @@
+URGENT: Live E2E Test - Watcher Running
+
+Subject: Test action item created while watcher is active
+From: E2E Test Suite
+Date: 2026-01-09 16:30:00
+Priority: High
+
+This file is being created while the watcher is actively running to test real-time detection.
+
+Expected behavior:
+1. Watcher detects this file immediately (within 5 seconds based on CHECK_INTERVAL)
+2. Creates action item in /Needs_Action/ with proper frontmatter
+3. Updates Dashboard.md to show pending item count
+4. Prevents duplicate processing if file is encountered again
+
+Test verification points:
+- Action item contains this content
+- Frontmatter includes source, priority, timestamp
+- File is tracked in .processed_ids.json
+- Dashboard reflects accurate state

@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs",
+      "Bash(powershell -NoProfile -Command \".\\\\.specify\\\\scripts\\\\powershell\\\\check-prerequisites.ps1 -Json\")",
+      "Bash(powershell -NoProfile -Command \".\\\\.specify\\\\scripts\\\\powershell\\\\check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks\")",
+      "Bash(uv run python:*)",
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(timeout 15 uv run:*)",
+      "Skill(process-action-items)"
+    ]
+  }
+}

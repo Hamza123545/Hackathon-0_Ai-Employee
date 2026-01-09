@@ -1,0 +1,76 @@
+# Bronze Tier Personal AI Employee - Git Ignore
+
+# ============================================
+# SENSITIVE FILES - NEVER COMMIT
+# ============================================
+
+# Environment configuration (contains secrets)
+.env
+
+# Gmail OAuth credentials and tokens
+credentials.json
+token.pickle
+token.json
+
+# Processed items tracker (internal state)
+.processed_ids.json
+
+# ============================================
+# PYTHON
+# ============================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# uv package manager
+uv.lock
+.python-version
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+*.egg
+
+# pytest / testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+
+# ============================================
+# IDE / EDITOR
+# ============================================
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ============================================
+# LOGS
+# ============================================
+
+*.log
+logs/
+
+# ============================================
+# OBSIDIAN (vault-specific)
+# ============================================
+
+# Obsidian workspace files (optional - user preference)
+# .obsidian/workspace.json
+# .obsidian/workspaces.json

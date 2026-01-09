@@ -1,0 +1,16 @@
+# Bronze Tier Personal AI Employee Dependencies
+# Python 3.13+ required
+
+# File system monitoring
+watchdog>=4.0.0
+
+# Gmail API
+google-api-python-client>=2.100.0
+google-auth-oauthlib>=1.0.0
+google-auth-httplib2>=0.1.0
+
+# Environment configuration
+python-dotenv>=1.0.0
+
+# YAML frontmatter parsing
+pyyaml>=6.0.0

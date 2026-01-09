@@ -1,0 +1,209 @@
+{
+  "main": {
+    "id": "a0bd8124075c334b",
+    "type": "split",
+    "children": [
+      {
+        "id": "33522d407b5e22a3",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "8e4aace0a42c3d31",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "2c5d0a658fbf6b74",
+    "type": "split",
+    "children": [
+      {
+        "id": "c59f319e034e4595",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "b942f4efb7d3643c",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "7bbd0c988a16c3ac",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "80fce40d29d0d566",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "7098a5a767b6a6c3",
+    "type": "split",
+    "children": [
+      {
+        "id": "93f2063efb7b9bb9",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "5113c63a8e2b9222",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "3763d3f72aa41e8c",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links"
+            }
+          },
+          {
+            "id": "a50e7fe6526762f1",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "28493b3f9479e694",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "05fb34e8f3e03044",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "8e4aace0a42c3d31",
+  "lastOpenFiles": [
+    "Dashboard.md",
+    "Plans/plan-budget-review-20260109-172031.md",
+    "Needs_Action/action-file-budget-reviewtxt-20260109-171401.md",
+    "Done/action-file-budget-reviewtxt-20260109-171401.md",
+    "Plans/plan-dashboard-auto-update-test-20260109-170200.md",
+    "watch_folder/budget_review.txt",
+    "DEMO_GUIDE.md",
+    "README.md",
+    "Company_Handbook.md",
+    "Done/action-file-auto-test-urgent-requesttxt-20260109-170000.md",
+    "Needs_Action/action-file-auto-test-urgent-requesttxt-20260109-170000.md",
+    "Needs_Action/action-file-auto-test-urgent-requesttxt-20260109-165956.md",
+    "watch_folder/auto-test-urgent-request.txt",
+    "Untitled 1.base",
+    "watch_folder/test-dashboard-update.txt",
+    "Untitled.base",
+    "Plans/plan-e2e-test-verification-20260109-163245.md",
+    "Needs_Action/action-file-duplicate-testtxt-20260109-163546.md",
+    "watch_folder/duplicate-test.txt",
+    "Done/action-file-live-test-watcher-activetxt-20260109-163145.md",
+    "Needs_Action/action-file-live-test-watcher-activetxt-20260109-163145.md",
+    "watch_folder/live-test-watcher-active.txt",
+    "watch_folder/live-test-$(date +%s).txt",
+    "watch_folder/e2e-test-request.txt",
+    "COMPLETE_TESTING_PROMPT.md",
+    "TESTING_PROMPTS.md",
+    "OBSIDIAN_SETUP.md"
+  ]
+}

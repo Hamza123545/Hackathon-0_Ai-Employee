@@ -1,0 +1,10 @@
+This is a test document for the Bronze Tier Personal AI Employee.
+
+It was created to verify the end-to-end workflow:
+1. File dropped in watch folder
+2. Watcher detects new file
+3. Action item created in Needs_Action folder
+4. Claude Code processes action item
+5. Plan created in Plans folder
+
+Test completed successfully if you see this in the action item!

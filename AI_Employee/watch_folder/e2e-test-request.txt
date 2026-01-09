@@ -1,0 +1,33 @@
+URGENT: End-to-End Test Request for Bronze Tier AI Employee
+
+Subject: Verify complete workflow from detection to plan creation
+From: Testing Team
+Date: 2026-01-09
+Priority: High
+
+Description:
+This is a test action item to verify the complete end-to-end workflow of the Bronze Tier Personal AI Employee system. This test should trigger the following sequence:
+
+1. Filesystem watcher detects this new file
+2. Watcher creates an action item in /Needs_Action/
+3. Dashboard.md is updated to show the new pending item
+4. Claude Code processes the action item using the @process-action-items skill
+5. A structured plan is created in /Plans/ with actionable checkboxes
+6. The original action item is moved to /Done/
+7. Dashboard.md is updated to reflect the completed processing
+
+Expected Outcome:
+- Action item file created in /Needs_Action/ within 60 seconds
+- Plan file created in /Plans/ with minimum 3 checkboxes
+- Original action item moved to /Done/
+- Dashboard shows accurate counts and recent activity
+- No duplicate files created
+- All error handling works correctly
+
+Test Categories:
+- Watcher detection capability
+- File creation and frontmatter formatting
+- Claude Code integration via Agent Skill
+- Vault folder transitions (Needs_Action → Done)
+- Dashboard synchronization
+- Duplicate prevention mechanism
