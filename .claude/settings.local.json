@@ -11,7 +11,11 @@
       "Bash(findstr:*)",
       "Bash(timeout 15 uv run:*)",
       "Skill(process-action-items)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(test:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

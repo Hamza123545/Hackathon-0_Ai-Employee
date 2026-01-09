@@ -1,5 +1,9 @@
-# Bronze Tier Personal AI Employee Dependencies
-# Python 3.13+ required
+# Personal AI Employee Dependencies
+# Python 3.9+ required (Bronze + Silver Tier)
+
+# ============================================
+# BRONZE TIER DEPENDENCIES
+# ============================================
 
 # File system monitoring
 watchdog>=4.0.0
@@ -14,3 +18,22 @@ python-dotenv>=1.0.0
 
 # YAML frontmatter parsing
 pyyaml>=6.0.0
+
+# ============================================
+# SILVER TIER DEPENDENCIES
+# ============================================
+
+# MCP server framework
+fastmcp>=1.0.0
+
+# Browser automation (WhatsApp watcher)
+playwright>=1.40.0
+
+# HTTP client (LinkedIn API)
+requests>=2.31.0
+
+# Async HTTP client (MCP servers)
+aiohttp>=3.9.0
+
+# Data validation and serialization
+pydantic>=2.5.0
