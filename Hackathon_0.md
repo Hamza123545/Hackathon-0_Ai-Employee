@@ -9,7 +9,7 @@ Architecture & Tech Stack:
 The proposed stack is robust, privacy-focused, and clever:
 The Brain: Claude Code acts as the reasoning engine.
 The Memory/GUI: Obsidian (local Markdown) is used as the dashboard, keeping data local and accessible.
-The Senses (Watchers): Lightweight Python scripts monitor Gmail, WhatsApp, and filesystems to trigger the AI.
+The Senses (Watchers): Lightweight Python scripts monitor Gmail, WhatsApp, and filesystems to trigger the AI. das9999
 The Hands (MCP): Model Context Protocol (MCP) servers handle external actions like sending emails or clicking buttons.
 This architecture solves the "lazy agent" problem by using "Watchers" to wake the agent up rather than waiting for user input.
 This is an exceptional technical hackathon project. It moves beyond "prompt engineering" into "agent engineering." It provides a complete, viable path to building a functional autonomous agent using tools available in 2026 (or today).

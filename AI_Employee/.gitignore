@@ -1,4 +1,4 @@
-# Bronze Tier Personal AI Employee - Git Ignore
+# Personal AI Employee - Git Ignore (Bronze + Silver Tier)
 
 # ============================================
 # SENSITIVE FILES - NEVER COMMIT
@@ -14,6 +14,24 @@ token.json
 
 # Processed items tracker (internal state)
 .processed_ids.json
+
+# ============================================
+# SILVER TIER SENSITIVE FILES
+# ============================================
+
+# WhatsApp session persistence
+whatsapp_session.json
+
+# MCP server environment files
+mcp_servers/*/.env
+mcp_servers/**/.env
+
+# Audit logs (contain execution history)
+Logs/*.json
+
+# Screenshots from browser automation
+Logs/screenshots/*.png
+Logs/screenshots/*.jpg
 
 # ============================================
 # PYTHON
