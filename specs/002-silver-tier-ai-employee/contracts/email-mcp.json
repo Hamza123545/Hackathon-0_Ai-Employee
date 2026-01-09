@@ -1,0 +1,424 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schema/mcp-server-contract.json",
+  "server": {
+    "name": "email-mcp",
+    "version": "1.0.0",
+    "description": "MCP server for email operations via SMTP/IMAP",
+    "transport": "stdio",
+    "protocol_version": "1.0"
+  },
+  "capabilities": {
+    "tools": true,
+    "resources": false,
+    "prompts": false
+  },
+  "tools": [
+    {
+      "name": "send_email",
+      "description": "Send an email via SMTP",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "to": {
+            "type": "string",
+            "format": "email",
+            "description": "Recipient email address"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Email subject line",
+            "maxLength": 998
+          },
+          "body": {
+            "type": "string",
+            "description": "Email body (plain text or HTML)",
+            "maxLength": 50000
+          },
+          "from_addr": {
+            "type": "string",
+            "format": "email",
+            "description": "Sender email address (optional, uses default from config)",
+            "optional": true
+          },
+          "cc": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
+            "description": "CC recipients",
+            "optional": true
+          },
+          "bcc": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "email"
+            },
+            "description": "BCC recipients",
+            "optional": true
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "filename": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string",
+                  "description": "Absolute path to file"
+                },
+                "content_type": {
+                  "type": "string",
+                  "description": "MIME type",
+                  "optional": true
+                }
+              },
+              "required": ["filename", "path"]
+            },
+            "description": "File attachments",
+            "optional": true,
+            "maxItems": 10
+          },
+          "is_html": {
+            "type": "boolean",
+            "description": "Whether body is HTML (default: false)",
+            "optional": true,
+            "default": false
+          }
+        },
+        "required": ["to", "subject", "body"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["sent", "error"]
+          },
+          "message_id": {
+            "type": "string",
+            "description": "SMTP message ID (if sent)"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When email was sent"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if status is error"
+          },
+          "error_code": {
+            "type": "string",
+            "enum": ["SMTP_AUTH_FAILED", "SMTP_CONNECTION_ERROR", "INVALID_RECIPIENT", "ATTACHMENT_TOO_LARGE", "UNKNOWN"],
+            "description": "Machine-readable error code"
+          }
+        },
+        "required": ["status"]
+      }
+    },
+    {
+      "name": "list_inbox",
+      "description": "List recent emails from IMAP inbox (for watcher support)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "folder": {
+            "type": "string",
+            "description": "IMAP folder name",
+            "default": "INBOX"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Max emails to return",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          },
+          "unread_only": {
+            "type": "boolean",
+            "description": "Only return unread emails",
+            "default": true
+          },
+          "since_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Only emails received after this date",
+            "optional": true
+          }
+        },
+        "required": []
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "emails": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "message_id": {
+                  "type": "string"
+                },
+                "from": {
+                  "type": "string"
+                },
+                "subject": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "body_preview": {
+                  "type": "string",
+                  "description": "First 200 chars of body"
+                },
+                "is_unread": {
+                  "type": "boolean"
+                },
+                "has_attachments": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["message_id", "from", "subject", "date"]
+            }
+          },
+          "total_count": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["success", "error"]
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if status is error"
+          }
+        },
+        "required": ["emails", "status"]
+      }
+    },
+    {
+      "name": "health_check",
+      "description": "Check if email server is reachable and credentials are valid",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["available", "error"]
+          },
+          "smtp_reachable": {
+            "type": "boolean"
+          },
+          "imap_reachable": {
+            "type": "boolean"
+          },
+          "auth_valid": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error details if status is error"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["status", "checked_at"]
+      }
+    }
+  ],
+  "configuration": {
+    "environment_variables": {
+      "SMTP_HOST": {
+        "description": "SMTP server hostname (e.g., smtp.gmail.com)",
+        "required": true
+      },
+      "SMTP_PORT": {
+        "description": "SMTP server port (e.g., 587 for TLS, 465 for SSL)",
+        "required": true,
+        "default": "587"
+      },
+      "SMTP_USERNAME": {
+        "description": "SMTP authentication username",
+        "required": true,
+        "sensitive": true
+      },
+      "SMTP_PASSWORD": {
+        "description": "SMTP authentication password or app-specific password",
+        "required": true,
+        "sensitive": true
+      },
+      "SMTP_USE_TLS": {
+        "description": "Use TLS encryption (true/false)",
+        "required": false,
+        "default": "true"
+      },
+      "IMAP_HOST": {
+        "description": "IMAP server hostname (e.g., imap.gmail.com)",
+        "required": true
+      },
+      "IMAP_PORT": {
+        "description": "IMAP server port (e.g., 993 for SSL)",
+        "required": false,
+        "default": "993"
+      },
+      "FROM_ADDRESS": {
+        "description": "Default sender email address",
+        "required": true
+      }
+    }
+  },
+  "error_codes": {
+    "SMTP_AUTH_FAILED": {
+      "description": "SMTP authentication failed (invalid credentials)",
+      "recoverable": false,
+      "user_action": "Verify SMTP_USERNAME and SMTP_PASSWORD in environment"
+    },
+    "SMTP_CONNECTION_ERROR": {
+      "description": "Cannot connect to SMTP server",
+      "recoverable": true,
+      "user_action": "Check network connectivity and SMTP_HOST/SMTP_PORT"
+    },
+    "INVALID_RECIPIENT": {
+      "description": "Recipient email address is invalid or rejected",
+      "recoverable": false,
+      "user_action": "Verify recipient email address"
+    },
+    "ATTACHMENT_TOO_LARGE": {
+      "description": "Total attachment size exceeds server limit (typically 25MB)",
+      "recoverable": false,
+      "user_action": "Reduce attachment size or use file sharing link"
+    },
+    "UNKNOWN": {
+      "description": "Unexpected error occurred",
+      "recoverable": false,
+      "user_action": "Check MCP server logs for details"
+    }
+  },
+  "examples": [
+    {
+      "tool": "send_email",
+      "description": "Send a simple text email",
+      "request": {
+        "method": "tools/call",
+        "params": {
+          "name": "send_email",
+          "arguments": {
+            "to": "recipient@example.com",
+            "subject": "Meeting reminder",
+            "body": "Hi,\n\nJust a reminder about our meeting tomorrow at 10am.\n\nBest,\nYour AI Employee"
+          }
+        }
+      },
+      "response": {
+        "status": "sent",
+        "message_id": "<abc123@mail.gmail.com>",
+        "timestamp": "2026-01-09T14:23:15Z"
+      }
+    },
+    {
+      "tool": "send_email",
+      "description": "Send email with CC and attachments",
+      "request": {
+        "method": "tools/call",
+        "params": {
+          "name": "send_email",
+          "arguments": {
+            "to": "client@example.com",
+            "cc": ["manager@example.com"],
+            "subject": "Project proposal",
+            "body": "<html><body><h1>Proposal</h1><p>Please review the attached document.</p></body></html>",
+            "is_html": true,
+            "attachments": [
+              {
+                "filename": "proposal.pdf",
+                "path": "D:/specs/AI_Employee/Done/proposal.pdf",
+                "content_type": "application/pdf"
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "status": "sent",
+        "message_id": "<def456@mail.gmail.com>",
+        "timestamp": "2026-01-09T15:30:00Z"
+      }
+    },
+    {
+      "tool": "list_inbox",
+      "description": "List unread emails from last 24 hours",
+      "request": {
+        "method": "tools/call",
+        "params": {
+          "name": "list_inbox",
+          "arguments": {
+            "unread_only": true,
+            "limit": 10,
+            "since_date": "2026-01-08T00:00:00Z"
+          }
+        }
+      },
+      "response": {
+        "status": "success",
+        "emails": [
+          {
+            "message_id": "<xyz789@client.com>",
+            "from": "client@example.com",
+            "subject": "Re: Project timeline",
+            "date": "2026-01-09T09:15:00Z",
+            "body_preview": "Thanks for the update. Can we schedule a call to discuss the next phase?",
+            "is_unread": true,
+            "has_attachments": false
+          }
+        ],
+        "total_count": 1
+      }
+    },
+    {
+      "tool": "health_check",
+      "description": "Verify email server connectivity",
+      "request": {
+        "method": "tools/call",
+        "params": {
+          "name": "health_check",
+          "arguments": {}
+        }
+      },
+      "response": {
+        "status": "available",
+        "smtp_reachable": true,
+        "imap_reachable": true,
+        "auth_valid": true,
+        "checked_at": "2026-01-09T16:00:00Z"
+      }
+    }
+  ],
+  "rate_limits": {
+    "send_email": {
+      "requests_per_minute": 10,
+      "requests_per_hour": 100,
+      "requests_per_day": 500,
+      "note": "Gmail-specific limits: 500 emails/day for free accounts, 2000/day for Workspace"
+    }
+  },
+  "security_notes": [
+    "NEVER log or store SMTP_PASSWORD in plain text",
+    "Use app-specific passwords for Gmail (not account password)",
+    "Email body may contain PII - sanitize before logging to audit logs",
+    "Validate recipient addresses before sending to prevent abuse",
+    "Attachment paths must be validated to prevent directory traversal attacks"
+  ]
+}

@@ -1,0 +1,603 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schema/mcp-server-contract.json",
+  "server": {
+    "name": "playwright-mcp",
+    "version": "1.0.0",
+    "description": "MCP server for browser automation via Playwright (WhatsApp monitoring, form submission, web scraping)",
+    "transport": "stdio",
+    "protocol_version": "1.0"
+  },
+  "capabilities": {
+    "tools": true,
+    "resources": false,
+    "prompts": false
+  },
+  "tools": [
+    {
+      "name": "check_whatsapp_messages",
+      "description": "Check for new WhatsApp Web messages from monitored contacts",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "monitored_contacts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of contact names or numbers to monitor",
+            "minItems": 1,
+            "maxItems": 50
+          },
+          "unread_only": {
+            "type": "boolean",
+            "description": "Only return unread messages",
+            "default": true
+          },
+          "since_timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Only messages received after this time",
+            "optional": true
+          },
+          "max_messages": {
+            "type": "integer",
+            "description": "Max messages to return per contact",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10
+          }
+        },
+        "required": ["monitored_contacts"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "message_id": {
+                  "type": "string",
+                  "description": "Unique message identifier (timestamp + contact hash)"
+                },
+                "from_contact": {
+                  "type": "string",
+                  "description": "Contact name or number"
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "message_text": {
+                  "type": "string",
+                  "description": "Message content"
+                },
+                "is_unread": {
+                  "type": "boolean"
+                },
+                "has_media": {
+                  "type": "boolean",
+                  "description": "Whether message contains images/videos/documents"
+                },
+                "media_type": {
+                  "type": "string",
+                  "enum": ["image", "video", "document", "audio", "none"],
+                  "description": "Type of media attachment"
+                }
+              },
+              "required": ["message_id", "from_contact", "timestamp", "message_text", "is_unread"]
+            }
+          },
+          "total_count": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["success", "error", "session_expired"]
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if status is error"
+          },
+          "error_code": {
+            "type": "string",
+            "enum": ["SESSION_EXPIRED", "WHATSAPP_DISCONNECTED", "BROWSER_ERROR", "CONTACT_NOT_FOUND", "UNKNOWN"]
+          }
+        },
+        "required": ["messages", "status"]
+      }
+    },
+    {
+      "name": "initialize_whatsapp_session",
+      "description": "Initialize WhatsApp Web session (requires QR code scan on first use)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_path": {
+            "type": "string",
+            "description": "Path to save session data (e.g., 'whatsapp_session.json')",
+            "default": "whatsapp_session.json"
+          },
+          "headless": {
+            "type": "boolean",
+            "description": "Run browser in headless mode (false for QR scan, true for reuse)",
+            "default": false
+          },
+          "wait_for_qr_scan": {
+            "type": "boolean",
+            "description": "Wait for user to scan QR code",
+            "default": true
+          },
+          "qr_timeout_seconds": {
+            "type": "integer",
+            "description": "Max time to wait for QR scan",
+            "minimum": 30,
+            "maximum": 300,
+            "default": 120
+          }
+        },
+        "required": []
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["authenticated", "awaiting_qr_scan", "error"]
+          },
+          "session_saved": {
+            "type": "boolean",
+            "description": "Whether session was saved to disk"
+          },
+          "session_path": {
+            "type": "string",
+            "description": "Path where session is saved"
+          },
+          "authenticated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if status is error"
+          }
+        },
+        "required": ["status"]
+      }
+    },
+    {
+      "name": "automate_web_form",
+      "description": "Fill and submit a web form automatically",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL of the page with the form"
+          },
+          "form_fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "selector": {
+                  "type": "string",
+                  "description": "CSS selector for input field"
+                },
+                "value": {
+                  "type": "string",
+                  "description": "Value to enter"
+                },
+                "field_type": {
+                  "type": "string",
+                  "enum": ["text", "email", "password", "select", "checkbox", "radio"],
+                  "default": "text"
+                }
+              },
+              "required": ["selector", "value"]
+            },
+            "minItems": 1
+          },
+          "submit_button_selector": {
+            "type": "string",
+            "description": "CSS selector for submit button",
+            "optional": true
+          },
+          "wait_for_navigation": {
+            "type": "boolean",
+            "description": "Wait for page navigation after submit",
+            "default": true
+          },
+          "screenshot_on_completion": {
+            "type": "boolean",
+            "description": "Take screenshot after form submission",
+            "default": true
+          },
+          "screenshot_path": {
+            "type": "string",
+            "description": "Path to save screenshot",
+            "optional": true
+          }
+        },
+        "required": ["url", "form_fields"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["success", "error", "timeout"]
+          },
+          "final_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL after form submission"
+          },
+          "screenshot_path": {
+            "type": "string",
+            "description": "Path to screenshot file (if captured)"
+          },
+          "execution_duration_ms": {
+            "type": "integer"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if status is error"
+          },
+          "error_code": {
+            "type": "string",
+            "enum": ["SELECTOR_NOT_FOUND", "TIMEOUT", "NAVIGATION_ERROR", "BROWSER_ERROR", "UNKNOWN"]
+          }
+        },
+        "required": ["status"]
+      }
+    },
+    {
+      "name": "scrape_webpage",
+      "description": "Extract data from a webpage using CSS selectors",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to scrape"
+          },
+          "selectors": {
+            "type": "object",
+            "description": "CSS selectors to extract data",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "minProperties": 1
+          },
+          "wait_for_selector": {
+            "type": "string",
+            "description": "Wait for this selector before scraping",
+            "optional": true
+          },
+          "screenshot": {
+            "type": "boolean",
+            "description": "Take screenshot of page",
+            "default": false
+          }
+        },
+        "required": ["url", "selectors"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["success", "error"]
+          },
+          "data": {
+            "type": "object",
+            "description": "Extracted data (keys match selector keys)",
+            "additionalProperties": true
+          },
+          "screenshot_path": {
+            "type": "string",
+            "description": "Path to screenshot (if captured)"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if status is error"
+          }
+        },
+        "required": ["status"]
+      }
+    },
+    {
+      "name": "health_check",
+      "description": "Check if Playwright browser is available and WhatsApp session is valid",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["available", "error"]
+          },
+          "browser_available": {
+            "type": "boolean"
+          },
+          "whatsapp_session_valid": {
+            "type": "boolean",
+            "description": "Whether saved WhatsApp session is still valid"
+          },
+          "whatsapp_authenticated": {
+            "type": "boolean",
+            "description": "Whether currently authenticated to WhatsApp Web"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error details if status is error"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["status", "checked_at"]
+      }
+    }
+  ],
+  "configuration": {
+    "environment_variables": {
+      "PLAYWRIGHT_BROWSER": {
+        "description": "Browser to use (chromium, firefox, webkit)",
+        "required": false,
+        "default": "chromium"
+      },
+      "PLAYWRIGHT_HEADLESS": {
+        "description": "Run browser in headless mode (true/false)",
+        "required": false,
+        "default": "true",
+        "note": "Must be false for initial WhatsApp QR scan"
+      },
+      "PLAYWRIGHT_SCREENSHOT_DIR": {
+        "description": "Directory to save screenshots",
+        "required": false,
+        "default": "D:/specs/AI_Employee/Logs/screenshots"
+      },
+      "WHATSAPP_SESSION_PATH": {
+        "description": "Path to WhatsApp session data file",
+        "required": false,
+        "default": "D:/specs/AI_Employee/whatsapp_session.json"
+      },
+      "PLAYWRIGHT_TIMEOUT_MS": {
+        "description": "Default timeout for operations (milliseconds)",
+        "required": false,
+        "default": "30000"
+      }
+    },
+    "browser_setup": {
+      "chromium_install": "playwright install chromium",
+      "required_version": "Playwright 1.40.0+",
+      "note": "WhatsApp Web requires Chromium browser (not Firefox/WebKit)"
+    }
+  },
+  "error_codes": {
+    "SESSION_EXPIRED": {
+      "description": "WhatsApp Web session has expired (typically after 14 days of inactivity)",
+      "recoverable": true,
+      "user_action": "Re-run initialize_whatsapp_session with headless=false to scan QR code"
+    },
+    "WHATSAPP_DISCONNECTED": {
+      "description": "WhatsApp Web is disconnected or logged out",
+      "recoverable": true,
+      "user_action": "Check WhatsApp on phone is connected to internet and logged in"
+    },
+    "BROWSER_ERROR": {
+      "description": "Playwright browser failed to launch or crashed",
+      "recoverable": true,
+      "user_action": "Check Playwright installation: playwright install chromium"
+    },
+    "CONTACT_NOT_FOUND": {
+      "description": "Specified contact not found in WhatsApp",
+      "recoverable": false,
+      "user_action": "Verify contact name or number in monitored_contacts list"
+    },
+    "SELECTOR_NOT_FOUND": {
+      "description": "CSS selector not found on page (form automation)",
+      "recoverable": false,
+      "user_action": "Verify CSS selector is correct for target webpage"
+    },
+    "TIMEOUT": {
+      "description": "Operation timed out (page load, selector wait, etc.)",
+      "recoverable": true,
+      "user_action": "Increase PLAYWRIGHT_TIMEOUT_MS or check network connectivity"
+    },
+    "NAVIGATION_ERROR": {
+      "description": "Page navigation failed after form submission",
+      "recoverable": false,
+      "user_action": "Check if form submission was successful manually"
+    },
+    "UNKNOWN": {
+      "description": "Unexpected error occurred",
+      "recoverable": false,
+      "user_action": "Check MCP server logs for details"
+    }
+  },
+  "examples": [
+    {
+      "tool": "initialize_whatsapp_session",
+      "description": "Initialize WhatsApp session with QR scan",
+      "request": {
+        "method": "tools/call",
+        "params": {
+          "name": "initialize_whatsapp_session",
+          "arguments": {
+            "session_path": "whatsapp_session.json",
+            "headless": false,
+            "wait_for_qr_scan": true,
+            "qr_timeout_seconds": 120
+          }
+        }
+      },
+      "response": {
+        "status": "authenticated",
+        "session_saved": true,
+        "session_path": "D:/specs/AI_Employee/whatsapp_session.json",
+        "authenticated_at": "2026-01-09T10:00:00Z"
+      }
+    },
+    {
+      "tool": "check_whatsapp_messages",
+      "description": "Check for unread WhatsApp messages from specific contacts",
+      "request": {
+        "method": "tools/call",
+        "params": {
+          "name": "check_whatsapp_messages",
+          "arguments": {
+            "monitored_contacts": ["John Doe", "Client Company", "+1234567890"],
+            "unread_only": true,
+            "max_messages": 10
+          }
+        }
+      },
+      "response": {
+        "status": "success",
+        "messages": [
+          {
+            "message_id": "msg_1736420400_johndoe",
+            "from_contact": "John Doe",
+            "timestamp": "2026-01-09T11:00:00Z",
+            "message_text": "Can we schedule a call today to discuss the project?",
+            "is_unread": true,
+            "has_media": false,
+            "media_type": "none"
+          }
+        ],
+        "total_count": 1
+      }
+    },
+    {
+      "tool": "automate_web_form",
+      "description": "Fill and submit a contact form",
+      "request": {
+        "method": "tools/call",
+        "params": {
+          "name": "automate_web_form",
+          "arguments": {
+            "url": "https://example.com/contact",
+            "form_fields": [
+              {
+                "selector": "#name",
+                "value": "AI Employee",
+                "field_type": "text"
+              },
+              {
+                "selector": "#email",
+                "value": "ai@example.com",
+                "field_type": "email"
+              },
+              {
+                "selector": "#message",
+                "value": "Hello, I'm interested in your services.",
+                "field_type": "text"
+              }
+            ],
+            "submit_button_selector": "button[type='submit']",
+            "wait_for_navigation": true,
+            "screenshot_on_completion": true,
+            "screenshot_path": "D:/specs/AI_Employee/Logs/screenshots/contact_form_2026-01-09.png"
+          }
+        }
+      },
+      "response": {
+        "status": "success",
+        "final_url": "https://example.com/thank-you",
+        "screenshot_path": "D:/specs/AI_Employee/Logs/screenshots/contact_form_2026-01-09.png",
+        "execution_duration_ms": 2500
+      }
+    },
+    {
+      "tool": "scrape_webpage",
+      "description": "Extract product information from a webpage",
+      "request": {
+        "method": "tools/call",
+        "params": {
+          "name": "scrape_webpage",
+          "arguments": {
+            "url": "https://example.com/product/12345",
+            "selectors": {
+              "title": "h1.product-title",
+              "price": ".product-price",
+              "description": ".product-description",
+              "availability": ".stock-status"
+            },
+            "wait_for_selector": "h1.product-title",
+            "screenshot": true
+          }
+        }
+      },
+      "response": {
+        "status": "success",
+        "data": {
+          "title": "Premium Widget",
+          "price": "$99.99",
+          "description": "High-quality widget for your needs",
+          "availability": "In Stock"
+        },
+        "screenshot_path": "D:/specs/AI_Employee/Logs/screenshots/scrape_2026-01-09.png"
+      }
+    },
+    {
+      "tool": "health_check",
+      "description": "Verify Playwright and WhatsApp session status",
+      "request": {
+        "method": "tools/call",
+        "params": {
+          "name": "health_check",
+          "arguments": {}
+        }
+      },
+      "response": {
+        "status": "available",
+        "browser_available": true,
+        "whatsapp_session_valid": true,
+        "whatsapp_authenticated": true,
+        "checked_at": "2026-01-09T16:00:00Z"
+      }
+    }
+  ],
+  "rate_limits": {
+    "check_whatsapp_messages": {
+      "requests_per_minute": 6,
+      "note": "5-minute polling interval recommended (check_interval_seconds: 300)"
+    },
+    "automate_web_form": {
+      "requests_per_minute": 5,
+      "note": "Rate limit to avoid being flagged as bot by target websites"
+    },
+    "scrape_webpage": {
+      "requests_per_minute": 10,
+      "note": "Respect target website robots.txt and rate limits"
+    }
+  },
+  "security_notes": [
+    "WhatsApp session data contains authentication tokens - store securely and never log",
+    "Session files should be excluded from version control (.gitignore)",
+    "Screenshots may contain sensitive information - sanitize before logging paths",
+    "Form automation values may contain credentials - validate and sanitize before logging",
+    "Browser automation can trigger anti-bot mechanisms - use delays and realistic user patterns",
+    "WhatsApp Web terms of service prohibit automation - use at own risk for personal accounts only"
+  ],
+  "implementation_notes": [
+    "WhatsApp session typically valid for 14 days of inactivity",
+    "Initial QR scan requires headless=false (visible browser window)",
+    "After authentication, subsequent checks can use headless=true",
+    "WhatsApp Web requires Chromium browser (Firefox/WebKit not supported)",
+    "Message detection uses DOM selectors (brittle - WhatsApp Web UI changes may break)",
+    "Screenshots saved to /Logs/screenshots/ directory (created if not exists)",
+    "Playwright timeout default: 30 seconds (configurable via PLAYWRIGHT_TIMEOUT_MS)"
+  ]
+}

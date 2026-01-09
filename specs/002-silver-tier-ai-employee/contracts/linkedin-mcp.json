@@ -1,0 +1,474 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schema/mcp-server-contract.json",
+  "server": {
+    "name": "linkedin-mcp",
+    "version": "1.0.0",
+    "description": "MCP server for LinkedIn API v2 operations (posts, monitoring)",
+    "transport": "stdio",
+    "protocol_version": "1.0"
+  },
+  "capabilities": {
+    "tools": true,
+    "resources": false,
+    "prompts": false
+  },
+  "tools": [
+    {
+      "name": "create_post",
+      "description": "Create a new LinkedIn post on user's profile",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Post content/commentary",
+            "minLength": 1,
+            "maxLength": 3000
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["PUBLIC", "CONNECTIONS"],
+            "description": "Post visibility level",
+            "default": "PUBLIC"
+          },
+          "hashtags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9]+$"
+            },
+            "description": "Hashtags to include (without # symbol)",
+            "optional": true,
+            "maxItems": 10
+          },
+          "link_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to share (optional)",
+            "optional": true
+          },
+          "link_title": {
+            "type": "string",
+            "description": "Title for shared link",
+            "optional": true,
+            "maxLength": 200
+          },
+          "link_description": {
+            "type": "string",
+            "description": "Description for shared link",
+            "optional": true,
+            "maxLength": 300
+          }
+        },
+        "required": ["text"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["published", "error"]
+          },
+          "post_id": {
+            "type": "string",
+            "description": "LinkedIn post URN (if published)"
+          },
+          "post_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Direct URL to view post"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When post was published"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if status is error"
+          },
+          "error_code": {
+            "type": "string",
+            "enum": ["AUTH_EXPIRED", "RATE_LIMIT_EXCEEDED", "INVALID_CONTENT", "NETWORK_ERROR", "UNKNOWN"],
+            "description": "Machine-readable error code"
+          }
+        },
+        "required": ["status"]
+      }
+    },
+    {
+      "name": "list_notifications",
+      "description": "List recent LinkedIn notifications (for watcher support)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "description": "Max notifications to return",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 20
+          },
+          "unread_only": {
+            "type": "boolean",
+            "description": "Only return unread notifications",
+            "default": true
+          },
+          "notification_types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["MESSAGE", "COMMENT", "REACTION", "MENTION", "CONNECTION_REQUEST"]
+            },
+            "description": "Filter by notification types",
+            "optional": true
+          }
+        },
+        "required": []
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "notifications": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "notification_id": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": ["MESSAGE", "COMMENT", "REACTION", "MENTION", "CONNECTION_REQUEST", "OTHER"]
+                },
+                "from_person": {
+                  "type": "string",
+                  "description": "Name of person who triggered notification"
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "preview": {
+                  "type": "string",
+                  "description": "First 200 chars of content"
+                },
+                "is_unread": {
+                  "type": "boolean"
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "URL to view full notification"
+                }
+              },
+              "required": ["notification_id", "type", "timestamp", "is_unread"]
+            }
+          },
+          "total_count": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["success", "error"]
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if status is error"
+          }
+        },
+        "required": ["notifications", "status"]
+      }
+    },
+    {
+      "name": "get_profile_stats",
+      "description": "Get user's LinkedIn profile statistics (for dashboard)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "person_urn": {
+            "type": "string",
+            "description": "User's LinkedIn person URN"
+          },
+          "posts_this_week": {
+            "type": "integer",
+            "description": "Number of posts in last 7 days"
+          },
+          "connections_count": {
+            "type": "integer",
+            "description": "Total connections"
+          },
+          "profile_views": {
+            "type": "integer",
+            "description": "Profile views in last 90 days"
+          },
+          "unread_messages": {
+            "type": "integer",
+            "description": "Unread message count"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["success", "error"]
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if status is error"
+          }
+        },
+        "required": ["status"]
+      }
+    },
+    {
+      "name": "health_check",
+      "description": "Check if LinkedIn API is reachable and access token is valid",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["available", "error"]
+          },
+          "api_reachable": {
+            "type": "boolean"
+          },
+          "token_valid": {
+            "type": "boolean"
+          },
+          "token_expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When access token expires"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "OAuth scopes granted"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error details if status is error"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["status", "checked_at"]
+      }
+    }
+  ],
+  "configuration": {
+    "environment_variables": {
+      "LINKEDIN_ACCESS_TOKEN": {
+        "description": "LinkedIn OAuth 2.0 access token",
+        "required": true,
+        "sensitive": true
+      },
+      "LINKEDIN_PERSON_URN": {
+        "description": "User's LinkedIn person URN (e.g., urn:li:person:ABCDEF123456)",
+        "required": true,
+        "note": "Obtained during OAuth flow or from /v2/userinfo endpoint"
+      },
+      "LINKEDIN_API_BASE_URL": {
+        "description": "LinkedIn REST API base URL",
+        "required": false,
+        "default": "https://api.linkedin.com/rest"
+      }
+    },
+    "oauth_setup": {
+      "authorization_url": "https://www.linkedin.com/oauth/v2/authorization",
+      "token_url": "https://www.linkedin.com/oauth/v2/accessToken",
+      "required_scopes": [
+        "openid",
+        "profile",
+        "w_member_social",
+        "r_basicprofile",
+        "r_1st_connections_size"
+      ],
+      "token_expiry": "60 days",
+      "refresh_flow": "Manual (re-authenticate via OAuth when token expires)"
+    }
+  },
+  "error_codes": {
+    "AUTH_EXPIRED": {
+      "description": "LinkedIn access token has expired (60-day expiry)",
+      "recoverable": false,
+      "user_action": "Re-authenticate via LinkedIn OAuth to obtain new access token"
+    },
+    "RATE_LIMIT_EXCEEDED": {
+      "description": "LinkedIn API rate limit exceeded (max 3 posts/day recommended)",
+      "recoverable": true,
+      "user_action": "Wait before posting again. Check Company_Handbook.md posting limits."
+    },
+    "INVALID_CONTENT": {
+      "description": "Post content violates LinkedIn policies or format requirements",
+      "recoverable": false,
+      "user_action": "Review content for policy violations or format issues"
+    },
+    "NETWORK_ERROR": {
+      "description": "Cannot connect to LinkedIn API",
+      "recoverable": true,
+      "user_action": "Check network connectivity"
+    },
+    "UNKNOWN": {
+      "description": "Unexpected error occurred",
+      "recoverable": false,
+      "user_action": "Check MCP server logs for details"
+    }
+  },
+  "examples": [
+    {
+      "tool": "create_post",
+      "description": "Create a simple text post",
+      "request": {
+        "method": "tools/call",
+        "params": {
+          "name": "create_post",
+          "arguments": {
+            "text": "Excited to share our latest project milestone! We've successfully automated our business workflows using AI. #AI #Automation #Innovation",
+            "visibility": "PUBLIC",
+            "hashtags": ["AI", "Automation", "Innovation"]
+          }
+        }
+      },
+      "response": {
+        "status": "published",
+        "post_id": "urn:li:share:1234567890",
+        "post_url": "https://www.linkedin.com/feed/update/urn:li:share:1234567890",
+        "timestamp": "2026-01-09T14:30:00Z"
+      }
+    },
+    {
+      "tool": "create_post",
+      "description": "Create post with shared link",
+      "request": {
+        "method": "tools/call",
+        "params": {
+          "name": "create_post",
+          "arguments": {
+            "text": "Great article on the future of AI in business automation. Highly recommend!",
+            "visibility": "PUBLIC",
+            "link_url": "https://example.com/ai-automation-trends",
+            "link_title": "The Future of AI in Business Automation",
+            "link_description": "How AI is transforming business operations and productivity"
+          }
+        }
+      },
+      "response": {
+        "status": "published",
+        "post_id": "urn:li:share:9876543210",
+        "post_url": "https://www.linkedin.com/feed/update/urn:li:share:9876543210",
+        "timestamp": "2026-01-09T15:45:00Z"
+      }
+    },
+    {
+      "tool": "list_notifications",
+      "description": "Get unread notifications",
+      "request": {
+        "method": "tools/call",
+        "params": {
+          "name": "list_notifications",
+          "arguments": {
+            "unread_only": true,
+            "limit": 10,
+            "notification_types": ["MESSAGE", "COMMENT", "MENTION"]
+          }
+        }
+      },
+      "response": {
+        "status": "success",
+        "notifications": [
+          {
+            "notification_id": "notif123",
+            "type": "COMMENT",
+            "from_person": "Jane Smith",
+            "timestamp": "2026-01-09T10:00:00Z",
+            "preview": "Great post! I'd love to learn more about your automation process.",
+            "is_unread": true,
+            "url": "https://www.linkedin.com/feed/update/urn:li:share:1234567890"
+          }
+        ],
+        "total_count": 1
+      }
+    },
+    {
+      "tool": "get_profile_stats",
+      "description": "Get profile statistics for dashboard",
+      "request": {
+        "method": "tools/call",
+        "params": {
+          "name": "get_profile_stats",
+          "arguments": {}
+        }
+      },
+      "response": {
+        "status": "success",
+        "person_urn": "urn:li:person:ABCDEF123456",
+        "posts_this_week": 3,
+        "connections_count": 842,
+        "profile_views": 156,
+        "unread_messages": 5
+      }
+    },
+    {
+      "tool": "health_check",
+      "description": "Verify LinkedIn API access",
+      "request": {
+        "method": "tools/call",
+        "params": {
+          "name": "health_check",
+          "arguments": {}
+        }
+      },
+      "response": {
+        "status": "available",
+        "api_reachable": true,
+        "token_valid": true,
+        "token_expires_at": "2026-03-10T00:00:00Z",
+        "scopes": ["openid", "profile", "w_member_social", "r_basicprofile"],
+        "checked_at": "2026-01-09T16:00:00Z"
+      }
+    }
+  ],
+  "rate_limits": {
+    "create_post": {
+      "recommended_per_day": 3,
+      "api_limit_per_day": 100,
+      "note": "LinkedIn recommends 1-3 posts/day for quality engagement. System default: max 3/day (configurable in Company_Handbook.md)"
+    },
+    "list_notifications": {
+      "requests_per_minute": 10,
+      "requests_per_hour": 100
+    },
+    "get_profile_stats": {
+      "requests_per_minute": 5,
+      "requests_per_hour": 50
+    }
+  },
+  "security_notes": [
+    "NEVER log or store LINKEDIN_ACCESS_TOKEN in plain text",
+    "Access tokens expire after 60 days - monitor token_expires_at and notify user",
+    "Post content may contain business-sensitive information - sanitize before logging",
+    "Validate post content length (max 3000 chars) before API call",
+    "Use CONNECTIONS visibility for sensitive business updates (not PUBLIC)"
+  ],
+  "implementation_notes": [
+    "LinkedIn API v2 uses REST with JSON payloads (not JSON-RPC natively - MCP wrapper needed)",
+    "Person URN required for posting - obtain from /v2/userinfo endpoint during OAuth",
+    "Hashtags should be embedded in text with # symbol (hashtags array is for metadata only)",
+    "Link previews auto-generated by LinkedIn when link_url provided",
+    "Notification monitoring requires polling (no webhooks in LinkedIn API v2 for individual accounts)"
+  ]
+}

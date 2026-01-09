@@ -10,7 +10,8 @@
       "Bash(dir:*)",
       "Bash(findstr:*)",
       "Bash(timeout 15 uv run:*)",
-      "Skill(process-action-items)"
+      "Skill(process-action-items)",
+      "Bash(ls:*)"
     ]
   }
 }
