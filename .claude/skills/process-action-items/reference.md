@@ -375,4 +375,169 @@ Before considering this skill production-ready:
 
 ---
 
+## 7. Silver Tier: External Action Detection and Approval Requests
+
+### 7.1 External Action Detection
+
+When processing action items or creating plans, detect if the plan requires **external actions** that must go through the approval workflow.
+
+**External Action Keywords** (scan plan content and recommendations):
+
+| Action Type | Detection Keywords |
+|-------------|-------------------|
+| `email_send` | "send email", "reply to", "email back", "respond via email", "forward to" |
+| `linkedin_post` | "post to linkedin", "share on linkedin", "linkedin update", "publish to linkedin" |
+| `browser_action` | "automate browser", "fill form", "click button", "navigate to", "browser automation", "web automation" |
+
+**Detection Algorithm**:
+
+```pseudocode
+FOR each recommended action in plan:
+    content_lower = action_text.lower()
+
+    IF any keyword in EMAIL_KEYWORDS matches content_lower:
+        external_action_type = 'email_send'
+        BREAK
+
+    IF any keyword in LINKEDIN_KEYWORDS matches content_lower:
+        external_action_type = 'linkedin_post'
+        BREAK
+
+    IF any keyword in BROWSER_KEYWORDS matches content_lower:
+        external_action_type = 'browser_action'
+        BREAK
+
+IF external_action_type detected:
+    Create approval request (see 7.2)
+    DO NOT execute directly
+```
+
+### 7.2 Risk Level Assessment
+
+Determine risk level for approval requests based on content and target:
+
+| Risk Level | Criteria |
+|------------|----------|
+| `low` | Email <100 words to known contacts (from Company_Handbook.md); LinkedIn posts <200 chars without links |
+| `medium` | Standard emails; LinkedIn posts 200-500 chars; Posts with links |
+| `high` | Browser automation; Emails to unknown recipients; Posts >500 chars; Actions with attachments |
+
+**Risk Assessment Algorithm**:
+
+```pseudocode
+FUNCTION assess_risk(action_type, target, content, parameters):
+    # Check Company_Handbook.md for known contacts
+    known_contacts = load_known_contacts_from_handbook()
+
+    IF action_type == 'browser_action':
+        RETURN 'high'  # Always high for browser automation
+
+    IF action_type == 'email_send':
+        IF target NOT IN known_contacts:
+            RETURN 'high'  # Unknown recipient
+        IF len(content) > 100:
+            RETURN 'medium'
+        IF parameters.get('attachments'):
+            RETURN 'high'
+        RETURN 'low'
+
+    IF action_type == 'linkedin_post':
+        text = parameters.get('text', '')
+        IF len(text) > 500:
+            RETURN 'high'
+        IF len(text) > 200 OR 'http' in text.lower():
+            RETURN 'medium'
+        RETURN 'low'
+
+    RETURN 'medium'  # Default for unknown types
+```
+
+### 7.3 Approval Request Creation
+
+When external action is detected, create approval request in `/Pending_Approval/`:
+
+**Filename Format**: `APPROVAL_{action_type}_{timestamp}.md`
+
+**Required Fields**:
+- `type: approval_request`
+- `id`: UUID v4
+- `action_type`: email_send | linkedin_post | browser_action
+- `target`: Recipient/URL/account
+- `risk_level`: low | medium | high
+- `mcp_server`: email_mcp | linkedin_mcp | playwright_mcp
+- `mcp_tool`: send_email | create_post | browser_action
+- `created_timestamp`: ISO 8601
+- `status`: pending
+- `source_action_item`: Path to original action item
+
+**Creation Steps**:
+
+1. Generate unique ID (UUID v4)
+2. Assess risk level using algorithm above
+3. Determine MCP server and tool based on action type
+4. Extract parameters from plan (to, subject, body, etc.)
+5. Generate approval request markdown
+6. Write to `/Pending_Approval/`
+7. Log approval creation to audit log
+8. Update plan status to `pending_approval`
+9. Reference approval request in plan
+
+### 7.4 Auto-Approval Threshold Checking
+
+Before creating approval request, check if action qualifies for auto-approval:
+
+**Auto-Approval Conditions** (from Company_Handbook.md):
+- `auto_approval_enabled: true` in configuration
+- Action meets low-risk criteria
+- Target is in approved contacts list
+- Content length below threshold
+
+**Auto-Approval Algorithm**:
+
+```pseudocode
+FUNCTION check_auto_approval(action_type, risk_level, target, config):
+    IF NOT config.auto_approval_enabled:
+        RETURN False
+
+    IF risk_level != 'low':
+        RETURN False
+
+    # Read auto-approval rules from Company_Handbook.md
+    auto_rules = load_auto_approval_rules()
+
+    IF action_type == 'email_send':
+        IF target IN auto_rules.approved_email_contacts:
+            RETURN True
+
+    IF action_type == 'linkedin_post':
+        IF auto_rules.auto_approve_linkedin_low_risk:
+            RETURN True
+
+    RETURN False
+
+IF check_auto_approval():
+    # Create approval request with auto_approved status
+    approval.status = 'auto_approved'
+    approval.approver = 'system'
+    approval.approval_timestamp = now()
+    # Move directly to /Approved/ folder
+    MOVE approval_file TO /Approved/
+```
+
+### 7.5 Risk Factors Documentation
+
+Include specific risk factors in approval request for human review:
+
+**Common Risk Factors**:
+- "Unknown recipient not in approved contacts list"
+- "Email contains sensitive keywords"
+- "Post exceeds standard character limit"
+- "Browser automation requires human verification"
+- "Contains external links"
+- "Attachment included"
+- "First-time interaction with this contact"
+- "After-hours action"
+
+---
+
 By following this reference, the `process-action-items` Skill generates **consistent, reliable, and maintainable** action item processing that forms the foundation for autonomous Personal AI Employee operation.

@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Literal
 
 
-SourceType = Literal['gmail', 'file']
+SourceType = Literal['gmail', 'file', 'whatsapp', 'linkedin']
 PriorityType = Literal['high', 'medium', 'low', 'unknown']
 StatusType = Literal['pending', 'in_progress', 'completed']
 

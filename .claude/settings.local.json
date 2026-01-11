@@ -15,7 +15,8 @@
       "Bash(test:*)",
       "Bash(git rev-parse:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(python -c \"\nfrom AI_Employee.utils.sanitizer import CredentialSanitizer, sanitize_credentials\nfrom AI_Employee.utils.audit_logger import AuditLogger\nfrom AI_Employee.models.approval_request import ApprovalRequest, create_approval_file, parse_approval_file\nfrom AI_Employee.models.mcp_server import MCPServer\nfrom AI_Employee.models.watcher_instance import WatcherInstance, WatcherConfig, WatcherHealth\nfrom AI_Employee.utils.config import Config\nfrom AI_Employee.utils.dashboard import DashboardUpdater\n\n# Test basic instantiation\nsanitizer = CredentialSanitizer\\(\\)\nprint\\(''CredentialSanitizer: OK''\\)\n\napproval = ApprovalRequest\\(action_type=''email_send'', target=''test@example.com''\\)\nprint\\(f''ApprovalRequest: OK \\(id={approval.id[:8]}...\\)''\\)\n\nmcp = MCPServer\\(server_name=''email-mcp'', server_type=''email''\\)\nprint\\(f''MCPServer: OK \\(name={mcp.server_name}\\)''\\)\n\nwatcher = WatcherInstance\\(watcher_type=''gmail''\\)\nprint\\(f''WatcherInstance: OK \\(type={watcher.watcher_type}\\)''\\)\n\nconfig = Config\\(\\)\nprint\\(f''Config: OK \\(silver_tier={config.is_silver_tier_enabled\\(\\)}\\)''\\)\n\nprint\\(\\)\nprint\\(''All Phase 2 modules imported successfully!''\\)\n\")"
     ]
   }
 }

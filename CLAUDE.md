@@ -135,7 +135,11 @@ You are not expected to solve every problem autonomously. You MUST invoke the us
 - Prefer the smallest viable diff; do not refactor unrelated code.
 - Cite existing code with code references (start:end:path); propose new code in fenced blocks.
 - Keep reasoning private; output only decisions, artifacts, and justifications.
-- **Use Agent Skills instead of hardcoded prompts**: For Personal AI Employee hackathon, always use `@process-action-items` skill when processing action items, creating plans, or updating dashboards. See `.claude/skills/process-action-items/SKILL.md` for usage.
+- **Use Agent Skills instead of hardcoded prompts**: For Personal AI Employee hackathon:
+  - **Bronze tier**: Always use `@process-action-items` skill when processing action items, creating plans, or updating dashboards
+  - **Silver tier**: Use `@process-action-items` for approval request creation, and `@execute-approved-actions` for MCP server execution
+  - See `.claude/skills/process-action-items/SKILL.md` and `.claude/skills/execute-approved-actions/SKILL.md` for usage
+- **Use Context7 MCP for library documentation**: When implementing Silver tier, use Context7 MCP server to query up-to-date documentation for Python libraries (uuid, datetime, json, pathlib, pydantic, fastmcp, playwright, requests) if needed
 
 ### Execution contract for every request
 1) Confirm surface and success criteria (one sentence).
@@ -219,7 +223,8 @@ Wait for consent; never auto-create ADRs. Group related decisions (stacks, authe
 - `history/prompts/` — Prompt History Records
 - `history/adr/` — Architecture Decision Records
 - `.specify/` — SpecKit Plus templates and scripts
-- `.claude/skills/process-action-items/` — Agent Skill for processing action items in Personal AI Employee hackathon
+- `.claude/skills/process-action-items/` — Agent Skill for processing action items (Bronze + Silver tier)
+- `.claude/skills/execute-approved-actions/` — Agent Skill for executing approved actions via MCP servers (Silver tier)
 
 ## Agent Skills for Personal AI Employee Hackathon
 
@@ -231,11 +236,27 @@ Wait for consent; never auto-create ADRs. Group related decisions (stacks, authe
 - **Documentation**: `.claude/skills/process-action-items/SKILL.md`
 - **Examples**: `.claude/skills/process-action-items/examples.md`
 - **Reference**: `.claude/skills/process-action-items/reference.md`
+- **Tier**: Bronze + Silver (extends for Silver tier approval requests)
+
+**@execute-approved-actions** (`.claude/skills/execute-approved-actions/`):
+- **Purpose**: Execute approved external actions via MCP servers, log to audit logs, and update system status
+- **Usage**: When processing files from `/Approved/` folder, invoking MCP servers, or logging external actions
+- **Documentation**: `.claude/skills/execute-approved-actions/SKILL.md`
+- **Examples**: `.claude/skills/execute-approved-actions/examples.md`
+- **Tier**: Silver (MANDATORY for external actions)
 
 **When implementing Bronze tier tasks:**
 - Always use `@process-action-items` skill for action item processing workflows
 - Follow the skill's documented patterns for file formats and workflows
 - Reference the skill's examples and templates when creating plans or processing items
+
+**When implementing Silver tier tasks:**
+- Use `@process-action-items` skill to create approval requests in `/Pending_Approval/` for external actions
+- Use `@execute-approved-actions` skill to execute approved actions from `/Approved/` via MCP servers
+- ALWAYS log external actions to `/Logs/YYYY-MM-DD.json` using AuditLogger
+- ALWAYS sanitize credentials using CredentialSanitizer before logging
+- Follow approval workflow: `/Pending_Approval/` → `/Approved/` → execute via MCP → `/Done/`
+- Reference MCP contracts in `specs/002-silver-tier-ai-employee/contracts/` for server interfaces
 
 ## Code Standards
 See `.specify/memory/constitution.md` for code quality, testing, performance, security, and architecture principles.

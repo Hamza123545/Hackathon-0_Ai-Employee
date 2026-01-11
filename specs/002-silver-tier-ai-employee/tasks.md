@@ -46,13 +46,13 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T008 Create AI_Employee/utils/sanitizer.py with CredentialSanitizer class implementing recursive sanitization for SENSITIVE_KEYS (password, token, api_key, secret, credential, auth, bearer, access_token)
-- [ ] T009 Create AI_Employee/utils/audit_logger.py with AuditLogger class to append entries to /Logs/YYYY-MM-DD.json with schema: entry_id, timestamp, action_type, actor, target, parameters (sanitized), approval_status, approval_by, mcp_server, result, error, execution_duration_ms
-- [ ] T010 [P] Create AI_Employee/models/approval_request.py with ApprovalRequest dataclass and create_approval_file() function using schema from data-model.md
-- [ ] T011 [P] Create AI_Employee/models/mcp_server.py with MCPServer dataclass for server metadata: server_name, server_type, status, capabilities, last_successful_action, error_count
-- [ ] T012 [P] Create AI_Employee/models/watcher_instance.py with WatcherInstance dataclass for runtime state: watcher_type, status, process_id, last_check_time, items_detected_today, uptime_seconds, restart_count
-- [ ] T013 Update AI_Employee/utils/config.py to add Silver tier config: approval_check_interval, mcp_servers_config_path, audit_log_retention_days, auto_approval_enabled (default: False)
-- [ ] T014 Extend AI_Employee/utils/dashboard.py DashboardUpdater class with methods: update_silver_metrics() to add pending_approval_count, mcp_server_health, watcher_statuses (all watchers), recent_audit_entries (last 10)
+- [x] T008 Create AI_Employee/utils/sanitizer.py with CredentialSanitizer class implementing recursive sanitization for SENSITIVE_KEYS (password, token, api_key, secret, credential, auth, bearer, access_token)
+- [x] T009 Create AI_Employee/utils/audit_logger.py with AuditLogger class to append entries to /Logs/YYYY-MM-DD.json with schema: entry_id, timestamp, action_type, actor, target, parameters (sanitized), approval_status, approval_by, mcp_server, result, error, execution_duration_ms
+- [x] T010 [P] Create AI_Employee/models/approval_request.py with ApprovalRequest dataclass and create_approval_file() function using schema from data-model.md
+- [x] T011 [P] Create AI_Employee/models/mcp_server.py with MCPServer dataclass for server metadata: server_name, server_type, status, capabilities, last_successful_action, error_count
+- [x] T012 [P] Create AI_Employee/models/watcher_instance.py with WatcherInstance dataclass for runtime state: watcher_type, status, process_id, last_check_time, items_detected_today, uptime_seconds, restart_count
+- [x] T013 Update AI_Employee/utils/config.py to add Silver tier config: approval_check_interval, mcp_servers_config_path, audit_log_retention_days, auto_approval_enabled (default: False)
+- [x] T014 Extend AI_Employee/utils/dashboard.py DashboardUpdater class with methods: update_silver_metrics() to add pending_approval_count, mcp_server_health, watcher_statuses (all watchers), recent_audit_entries (last 10)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
@@ -68,20 +68,20 @@
 
 ### Implementation for User Story 1
 
-- [ ] T015 [US1] Create AI_Employee/watchers/whatsapp_watcher.py with WhatsAppWatcher class extending BaseWatcher, using Playwright sync_api for WhatsApp Web automation
-- [ ] T016 [US1] Implement WhatsAppWatcher.initialize_session() for QR code authentication flow, saving session to whatsapp_session.json via context.storage_state()
-- [ ] T017 [US1] Implement WhatsAppWatcher.check_for_updates() to reuse saved session, navigate to web.whatsapp.com, scan chat list for unread messages from monitored contacts (configured in Company_Handbook.md)
-- [ ] T018 [US1] Implement WhatsAppWatcher.create_action_file() to write action-whatsapp-{slug}-{timestamp}.md to AI_Employee/Needs_Action/ with source: whatsapp, sender name, timestamp, message preview
-- [ ] T019 [US1] Add WhatsApp session expiration detection (check for QR code canvas), log error, create notification in /Needs_Action/ when session expires
-- [ ] T020 [P] [US1] Create AI_Employee/watchers/linkedin_watcher.py with LinkedInWatcher class extending BaseWatcher, using requests library for LinkedIn REST API v2
-- [ ] T021 [P] [US1] Implement LinkedInWatcher.check_for_updates() to poll LinkedIn API /v2/me and /communications endpoints with OAuth2 bearer token from LINKEDIN_ACCESS_TOKEN env var
-- [ ] T022 [US1] Implement LinkedInWatcher.create_action_file() to write action-linkedin-{slug}-{timestamp}.md with source: linkedin, interaction type (comment/message), content, sender
-- [ ] T023 [US1] Add LinkedIn API rate limit handling: detect 429 status, implement exponential backoff (1s, 2s, 4s, 8s, 16s max 5 retries), log rate limit events
-- [ ] T024 [US1] Configure PM2 ecosystem.config.js with three watcher apps: gmail-watcher, whatsapp-watcher, linkedin-watcher (Python interpreter, 5-minute intervals, autorestart: true, max_restarts: 10, min_uptime: 10s)
-- [ ] T025 [US1] Add duplicate prevention across all watchers using content hash to detect same event from multiple sources (email + LinkedIn notification about same event) - create note in existing action item instead of new file
-- [ ] T026 [US1] Update BaseWatcher.run() to update WatcherInstance metadata (last_check_time, items_detected_today, uptime_seconds) on each cycle
+- [x] T015 [US1] Create AI_Employee/watchers/whatsapp_watcher.py with WhatsAppWatcher class extending BaseWatcher, using Playwright sync_api for WhatsApp Web automation
+- [x] T016 [US1] Implement WhatsAppWatcher.initialize_session() for QR code authentication flow, saving session to whatsapp_session.json via context.storage_state()
+- [x] T017 [US1] Implement WhatsAppWatcher.check_for_updates() to reuse saved session, navigate to web.whatsapp.com, scan chat list for unread messages from monitored contacts (configured in Company_Handbook.md)
+- [x] T018 [US1] Implement WhatsAppWatcher.create_action_file() to write action-whatsapp-{slug}-{timestamp}.md to AI_Employee/Needs_Action/ with source: whatsapp, sender name, timestamp, message preview
+- [x] T019 [US1] Add WhatsApp session expiration detection (check for QR code canvas), log error, create notification in /Needs_Action/ when session expires
+- [x] T020 [P] [US1] Create AI_Employee/watchers/linkedin_watcher.py with LinkedInWatcher class extending BaseWatcher, using requests library for LinkedIn REST API v2
+- [x] T021 [P] [US1] Implement LinkedInWatcher.check_for_updates() to poll LinkedIn API /v2/me and /communications endpoints with OAuth2 bearer token from LINKEDIN_ACCESS_TOKEN env var
+- [x] T022 [US1] Implement LinkedInWatcher.create_action_file() to write action-linkedin-{slug}-{timestamp}.md with source: linkedin, interaction type (comment/message), content, sender
+- [x] T023 [US1] Add LinkedIn API rate limit handling: detect 429 status, implement exponential backoff (1s, 2s, 4s, 8s, 16s max 5 retries), log rate limit events
+- [x] T024 [US1] Configure PM2 ecosystem.config.js with three watcher apps: gmail-watcher, whatsapp-watcher, linkedin-watcher (Python interpreter, 5-minute intervals, autorestart: true, max_restarts: 10, min_uptime: 10s)
+- [x] T025 [US1] Add duplicate prevention across all watchers using content hash to detect same event from multiple sources (email + LinkedIn notification about same event) - create note in existing action item instead of new file
+- [x] T026 [US1] Update BaseWatcher.run() to update WatcherInstance metadata (last_check_time, items_detected_today, uptime_seconds) on each cycle
 
-**Checkpoint**: Multiple watchers create action files from all sources - User Story 1 complete
+**Checkpoint**: ✅ Multiple watchers create action files from all sources - User Story 1 complete
 
 **Test Acceptance Scenarios**:
 - [ ] AS1-1: Gmail, WhatsApp, LinkedIn watchers running via PM2, new email arrives → action item in /Needs_Action/ with source: gmail within 5 minutes
@@ -102,17 +102,17 @@
 
 ### Implementation for User Story 2
 
-- [ ] T027 [US2] Extend .claude/skills/process-action-items/reference.md to detect external actions in plans (keywords: send email, post to linkedin, automate browser) and create approval requests instead of executing directly
-- [ ] T028 [US2] Implement approval request creation logic in process-action-items skill: use templates/ApprovalRequestTemplate.md to generate APPROVAL_{action}_{timestamp}.md in /Pending_Approval/ with risk_level assessment (low: <100 words to known contacts, medium: posts <200 chars, high: browser automation or unknown recipients)
-- [ ] T029 [US2] Add auto-approval threshold checking in process-action-items: read Company_Handbook.md auto_approval_rules, if action meets low-risk criteria and auto_approval_enabled=true, move directly to /Approved/ with approval_status: auto_approved
-- [ ] T030 [US2] Create AI_Employee/orchestrator.py with ApprovalOrchestrator class using watchdog to poll /Approved/ folder every 60 seconds for new .md files
-- [ ] T031 [US2] Implement ApprovalOrchestrator.process_approved_file() to read approval request, validate parameters, check expiration (24-hour timeout from created timestamp), move expired files to /Rejected/ with expiration note
-- [ ] T032 [US2] Add malformed approval file handling in orchestrator: validate YAML frontmatter, required fields (action_type, target, parameters, mcp_server), move malformed files to /Rejected/ with validation error note
-- [ ] T033 [US2] Implement rejection handling: when file moved to /Rejected/ manually, log rejection entry to audit log with approval_status: rejected, do NOT execute
-- [ ] T034 [US2] Update DashboardUpdater.update_silver_metrics() to display pending_approval_count (count /Pending_Approval/*.md files), oldest_pending_age (flag if >24 hours with "pending-overdue" label)
-- [ ] T035 [US2] Add PM2 configuration for approval-orchestrator in ecosystem.config.js: Python interpreter, check interval 60s, autorestart: true, cron_restart every 12 hours for cleanup
+- [x] T027 [US2] Extend .claude/skills/process-action-items/reference.md to detect external actions in plans (keywords: send email, post to linkedin, automate browser) and create approval requests instead of executing directly
+- [x] T028 [US2] Implement approval request creation logic in process-action-items skill: use templates/ApprovalRequestTemplate.md to generate APPROVAL_{action}_{timestamp}.md in /Pending_Approval/ with risk_level assessment (low: <100 words to known contacts, medium: posts <200 chars, high: browser automation or unknown recipients)
+- [x] T029 [US2] Add auto-approval threshold checking in process-action-items: read Company_Handbook.md auto_approval_rules, if action meets low-risk criteria and auto_approval_enabled=true, move directly to /Approved/ with approval_status: auto_approved
+- [x] T030 [US2] Create AI_Employee/orchestrator.py with ApprovalOrchestrator class using watchdog to poll /Approved/ folder every 60 seconds for new .md files
+- [x] T031 [US2] Implement ApprovalOrchestrator.process_approved_file() to read approval request, validate parameters, check expiration (24-hour timeout from created timestamp), move expired files to /Rejected/ with expiration note
+- [x] T032 [US2] Add malformed approval file handling in orchestrator: validate YAML frontmatter, required fields (action_type, target, parameters, mcp_server), move malformed files to /Rejected/ with validation error note
+- [x] T033 [US2] Implement rejection handling: when file moved to /Rejected/ manually, log rejection entry to audit log with approval_status: rejected, do NOT execute
+- [x] T034 [US2] Update DashboardUpdater.update_silver_metrics() to display pending_approval_count (count /Pending_Approval/*.md files), oldest_pending_age (flag if >24 hours with "pending-overdue" label)
+- [x] T035 [US2] Add PM2 configuration for approval-orchestrator in ecosystem.config.js: Python interpreter, check interval 60s, autorestart: true, cron_restart every 12 hours for cleanup
 
-**Checkpoint**: Approval workflow functional end-to-end - User Story 2 complete
+**Checkpoint**: ✅ Approval workflow functional end-to-end - User Story 2 complete
 
 **Test Acceptance Scenarios**:
 - [ ] AS2-1: Claude Code determines email should be sent → approval request in /Pending_Approval/ (not /Done/) with risk assessment and action details

@@ -3,8 +3,12 @@ Base watcher abstract class for Bronze Tier Personal AI Employee.
 
 Defines the common interface that all watcher implementations must follow.
 Uses Template Method pattern for the run loop.
+
+Silver tier adds WatcherInstance tracking for runtime metrics and health monitoring.
 """
 
+import json
+import os
 import random
 import time
 import logging
@@ -14,6 +18,7 @@ from typing import Any, Callable, TypeVar
 
 from ..utils.config import Config
 from ..models.processed_tracker import ProcessedTracker
+from ..models.watcher_instance import WatcherInstance, WatcherConfig
 
 
 T = TypeVar('T')
@@ -89,7 +94,16 @@ class BaseWatcher(ABC):
         tracker: ProcessedTracker for duplicate prevention
         logger: Logger instance for this watcher
         running: Flag to control the main loop
+        instance: WatcherInstance for runtime metrics and health tracking
     """
+
+    # Map watcher class names to WatcherType values
+    WATCHER_TYPE_MAP = {
+        'GmailWatcher': 'gmail',
+        'FileWatcher': 'filesystem',
+        'WhatsAppWatcher': 'whatsapp',
+        'LinkedInWatcher': 'linkedin'
+    }
 
     def __init__(self, config: Config):
         """
@@ -102,6 +116,18 @@ class BaseWatcher(ABC):
         self.tracker = ProcessedTracker(config.processed_ids_path)
         self.logger = logging.getLogger(self.__class__.__name__)
         self.running = False
+
+        # Initialize WatcherInstance for runtime metrics
+        watcher_type = self.WATCHER_TYPE_MAP.get(
+            self.__class__.__name__, 'filesystem'
+        )
+        self.instance = WatcherInstance(
+            watcher_type=watcher_type,
+            config=WatcherConfig(
+                check_interval_seconds=config.check_interval,
+                enabled=True
+            )
+        )
 
         # Ensure vault structure exists
         self.config.ensure_vault_structure()
@@ -167,11 +193,13 @@ class BaseWatcher(ABC):
         Main loop: poll for updates and create action files.
 
         This method runs indefinitely until stopped. It:
-        1. Checks for new items (with retry on transient errors)
-        2. Creates action files for each new item
-        3. Updates the dashboard
-        4. Sleeps for the configured interval
-        5. Repeats
+        1. Records watcher start with process ID
+        2. Checks for new items (with retry on transient errors)
+        3. Creates action files for each new item
+        4. Records check cycle metrics in WatcherInstance
+        5. Updates the dashboard
+        6. Sleeps for the configured interval
+        7. Repeats
 
         Handles KeyboardInterrupt for graceful shutdown.
         Uses exponential backoff retry for transient errors.
@@ -179,8 +207,13 @@ class BaseWatcher(ABC):
         self.running = True
         self.logger.info(f"Starting {self.__class__.__name__}...")
 
+        # Record watcher start with process ID
+        self.instance.record_start(process_id=str(os.getpid()))
+        self._save_instance_state()
+
         try:
             while self.running:
+                items_count = 0
                 try:
                     # Check for new items with retry logic
                     items = retry_with_backoff(
@@ -192,7 +225,8 @@ class BaseWatcher(ABC):
                     )
 
                     if items:
-                        self.logger.info(f"Found {len(items)} new item(s)")
+                        items_count = len(items)
+                        self.logger.info(f"Found {items_count} new item(s)")
 
                         # Create action files for each item
                         for item in items:
@@ -203,11 +237,18 @@ class BaseWatcher(ABC):
                             except Exception as e:
                                 self.logger.error(f"Failed to create action file: {e}")
 
+                    # Record successful check cycle
+                    self.instance.record_check(items_detected=items_count)
+                    self._save_instance_state()
+
                     # Update dashboard
                     self.update_dashboard()
 
                 except Exception as e:
                     self.logger.error(f"Error in check cycle (all retries exhausted): {e}")
+                    # Record error in health metrics
+                    self.instance.health.record_error(str(e))
+                    self._save_instance_state()
 
                 # Sleep until next check
                 self.logger.debug(f"Sleeping for {self.config.check_interval}s...")
@@ -218,15 +259,37 @@ class BaseWatcher(ABC):
         finally:
             self.stop()
 
+    def _save_instance_state(self) -> None:
+        """
+        Save WatcherInstance state to JSON file for monitoring.
+
+        Persists the watcher state to a JSON file that can be read
+        by the dashboard updater or external monitoring tools.
+        """
+        try:
+            state_dir = self.config.vault_path / '.watcher_state'
+            state_dir.mkdir(parents=True, exist_ok=True)
+
+            state_file = state_dir / f'{self.instance.watcher_type}_state.json'
+            with open(state_file, 'w', encoding='utf-8') as f:
+                json.dump(self.instance.to_dict(), f, indent=2)
+
+        except Exception as e:
+            self.logger.debug(f"Failed to save instance state: {e}")
+
     def stop(self) -> None:
         """
         Stop the watcher gracefully.
 
-        Sets the running flag to False and updates the dashboard
-        to reflect the stopped state with final activity snapshot.
+        Records the stop in WatcherInstance, saves final state,
+        and updates the dashboard to reflect the stopped state.
         """
         self.running = False
         self.logger.info(f"Stopped {self.__class__.__name__}")
+
+        # Record stop in WatcherInstance
+        self.instance.record_stop()
+        self._save_instance_state()
 
         # Update dashboard to show stopped status with final state
         try:

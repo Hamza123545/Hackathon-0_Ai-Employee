@@ -20,12 +20,13 @@ module.exports = {
       script: './watchers/gmail_watcher.py',
       interpreter: 'python',
       cwd: './AI_Employee',
+      exec_mode: 'fork',  // Python doesn't support cluster mode
 
       // Restart behavior
       autorestart: true,
       max_restarts: 10,
       min_uptime: '10s',
-      restart_delay: 5000,
+      restart_delay: 4000,
 
       // Watch mode disabled (watchers poll internally)
       watch: false,
@@ -34,7 +35,8 @@ module.exports = {
       env: {
         WATCHER_TYPE: 'gmail',
         CHECK_INTERVAL: '300',  // 5 minutes
-        PYTHONUNBUFFERED: '1'
+        PYTHONUNBUFFERED: '1',
+        LOG_LEVEL: 'INFO'
       },
 
       // Logging
@@ -42,6 +44,9 @@ module.exports = {
       out_file: './Logs/gmail-watcher-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
+
+      // Memory management
+      max_memory_restart: '500M',
 
       // Cron restart every 12 hours for cleanup
       cron_restart: '0 */12 * * *'
@@ -52,12 +57,13 @@ module.exports = {
       script: './watchers/whatsapp_watcher.py',
       interpreter: 'python',
       cwd: './AI_Employee',
+      exec_mode: 'fork',
 
       // Restart behavior
       autorestart: true,
       max_restarts: 10,
       min_uptime: '10s',
-      restart_delay: 5000,
+      restart_delay: 4000,
 
       // Watch mode disabled
       watch: false,
@@ -66,7 +72,8 @@ module.exports = {
       env: {
         WATCHER_TYPE: 'whatsapp',
         CHECK_INTERVAL: '300',  // 5 minutes
-        PYTHONUNBUFFERED: '1'
+        PYTHONUNBUFFERED: '1',
+        LOG_LEVEL: 'INFO'
       },
 
       // Logging
@@ -74,6 +81,9 @@ module.exports = {
       out_file: './Logs/whatsapp-watcher-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
+
+      // Playwright needs more memory
+      max_memory_restart: '800M',
 
       // Cron restart every 12 hours
       cron_restart: '0 */12 * * *'
@@ -84,12 +94,13 @@ module.exports = {
       script: './watchers/linkedin_watcher.py',
       interpreter: 'python',
       cwd: './AI_Employee',
+      exec_mode: 'fork',
 
       // Restart behavior
       autorestart: true,
       max_restarts: 10,
       min_uptime: '10s',
-      restart_delay: 5000,
+      restart_delay: 4000,
 
       // Watch mode disabled
       watch: false,
@@ -98,7 +109,8 @@ module.exports = {
       env: {
         WATCHER_TYPE: 'linkedin',
         CHECK_INTERVAL: '300',  // 5 minutes
-        PYTHONUNBUFFERED: '1'
+        PYTHONUNBUFFERED: '1',
+        LOG_LEVEL: 'INFO'
       },
 
       // Logging
@@ -106,6 +118,9 @@ module.exports = {
       out_file: './Logs/linkedin-watcher-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
+
+      // API-based watcher uses less memory
+      max_memory_restart: '300M',
 
       // Cron restart every 12 hours
       cron_restart: '0 */12 * * *'
@@ -119,12 +134,13 @@ module.exports = {
       script: './orchestrator.py',
       interpreter: 'python',
       cwd: './AI_Employee',
+      exec_mode: 'fork',
 
       // Restart behavior
       autorestart: true,
       max_restarts: 10,
       min_uptime: '10s',
-      restart_delay: 5000,
+      restart_delay: 4000,
 
       // Watch mode disabled (orchestrator polls /Approved folder)
       watch: false,
@@ -132,7 +148,8 @@ module.exports = {
       // Environment variables
       env: {
         APPROVAL_CHECK_INTERVAL: '60',  // 1 minute
-        PYTHONUNBUFFERED: '1'
+        PYTHONUNBUFFERED: '1',
+        LOG_LEVEL: 'INFO'
       },
 
       // Logging
@@ -140,6 +157,9 @@ module.exports = {
       out_file: './Logs/orchestrator-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
+
+      // Memory management
+      max_memory_restart: '300M',
 
       // Cron restart every 12 hours for cleanup
       cron_restart: '0 */12 * * *'
