@@ -485,12 +485,45 @@ Expected output:
 └─────┴──────────────────────┴─────────┴─────────┴──────────┘
 ```
 
-**PM2 Commands**:
-- `pm2 logs` - View all logs
-- `pm2 logs gmail-watcher` - View specific watcher logs
-- `pm2 restart all` - Restart all watchers
-- `pm2 stop all` - Stop all watchers
-- `pm2 delete all` - Remove all watchers
+**PM2 Commands** (Complete Reference):
+
+**Starting Processes:**
+- `pm2 start ecosystem.config.js` - Start all processes defined in ecosystem file
+- `pm2 start ecosystem.config.js --only gmail-watcher` - Start specific watcher only
+- `pm2 start ecosystem.config.js --only approval-orchestrator` - Start orchestrator only
+
+**Monitoring:**
+- `pm2 status` - View status of all processes (online/stopped/errored)
+- `pm2 monit` - Real-time monitoring dashboard (CPU, memory, logs)
+- `pm2 logs` - View all logs (combined from all processes)
+- `pm2 logs gmail-watcher` - View logs for specific watcher
+- `pm2 logs --lines 100` - View last 100 lines of logs
+- `pm2 logs --err` - View only error logs
+
+**Process Management:**
+- `pm2 restart all` - Restart all processes gracefully
+- `pm2 restart gmail-watcher` - Restart specific watcher
+- `pm2 stop all` - Stop all processes (keeps in PM2 list)
+- `pm2 stop gmail-watcher` - Stop specific watcher
+- `pm2 delete all` - Remove all processes from PM2 list
+- `pm2 delete gmail-watcher` - Remove specific watcher from PM2 list
+- `pm2 reload all` - Zero-downtime reload (for Node.js apps, not applicable for Python)
+
+**Persistence:**
+- `pm2 save` - Save current process list to PM2 startup script
+- `pm2 startup` - Generate startup script for OS (see OS Startup Integration below)
+- `pm2 unstartup` - Remove PM2 from OS startup
+
+**Information:**
+- `pm2 info gmail-watcher` - Detailed info about specific process
+- `pm2 describe gmail-watcher` - Same as info
+- `pm2 jlist` - JSON output of all processes (for scripts)
+- `pm2 prettylist` - Formatted list with more details
+
+**Maintenance:**
+- `pm2 flush` - Clear all log files
+- `pm2 kill` - Kill PM2 daemon (stops all processes)
+- `pm2 resurrect` - Restore previously saved process list
 
 ---
 
@@ -624,34 +657,329 @@ Open `AI_Employee/Dashboard.md` and verify it shows:
 ### Email MCP Issues
 
 **Problem**: `SMTP_AUTH_FAILED` error
-**Solution**: Use Gmail App-Specific Password (not regular password). Enable 2FA first.
+
+**Symptoms**: Audit log shows `error_code: SMTP_AUTH_FAILED`, email MCP health check returns `status: error`
+
+**Solution**: 
+1. **For Gmail**: Use app-specific password (not regular password)
+   - Enable 2FA on Google account
+   - Go to Google Account → Security → App passwords
+   - Generate new app password for "Mail"
+   - Update `.env`: `SMTP_PASSWORD=your-app-specific-password`
+2. **Test connection**: Run email MCP health_check tool
+3. **Check logs**: `pm2 logs` for detailed error
+
+**Prevention**: Store app-specific passwords in `.env` (never commit to git)
+
+---
 
 **Problem**: `SMTP_CONNECTION_ERROR`
-**Solution**: Check firewall settings. Gmail SMTP port 587 must be accessible.
+
+**Solution**: 
+1. Check firewall settings (Gmail SMTP port 587 must be accessible)
+2. Verify `SMTP_HOST` and `SMTP_PORT` in `.env`
+3. Test connectivity: `telnet smtp.gmail.com 587`
+4. Corporate networks may require VPN/proxy
+
+---
+
+**Problem**: `INVALID_RECIPIENT`
+
+**Solution**: Verify email address format, check for typos, ensure domain is valid
+
+---
+
+**Problem**: `ATTACHMENT_TOO_LARGE`
+
+**Solution**: Reduce attachment size (Gmail limit: 25MB), use file sharing service and send link instead
+
+---
 
 ### LinkedIn MCP Issues
 
 **Problem**: `AUTH_EXPIRED` error
-**Solution**: Refresh LinkedIn access token via OAuth flow (tokens expire after 60 days).
+
+**Symptoms**: LinkedIn MCP health check returns `status: error`, audit log shows `error_code: AUTH_EXPIRED`
+
+**Solution**:
+1. **Refresh OAuth token** (tokens expire after 60 days):
+   - Go to LinkedIn Developer Portal: https://www.linkedin.com/developers/apps
+   - Navigate to your app → Auth tab
+   - Generate new access token
+   - Update `.env`: `LINKEDIN_ACCESS_TOKEN=new_token`
+2. **Restart watcher**: `pm2 restart linkedin-watcher`
+3. **Verify token**: Run LinkedIn MCP health_check tool
+
+**Prevention**: Set calendar reminder for token refresh at 55 days
+
+---
 
 **Problem**: `RATE_LIMIT_EXCEEDED`
-**Solution**: Reduce posting frequency in `Company_Handbook.md`. LinkedIn recommends max 3 posts/day.
+
+**Solution**:
+1. Reduce posting frequency in `Company_Handbook.md` (max 3/day recommended)
+2. Wait for rate limit reset (daily)
+3. Check posting schedule (within business hours 9am-5pm)
+4. Review queued posts in `/Pending_Approval/`
+
+**Prevention**: Configure posting rules to stay within LinkedIn limits
+
+---
+
+**Problem**: `INVALID_CONTENT`
+
+**Solution**: Review post content for policy violations, remove prohibited content, ensure content matches approved topics
+
+---
 
 ### WhatsApp Watcher Issues
 
 **Problem**: `SESSION_EXPIRED` error
-**Solution**: Delete `whatsapp_session.json` and re-run initialization with QR scan.
+
+**Solution**:
+1. Delete `whatsapp_session.json` from vault
+2. Re-initialize: `python run_watcher.py whatsapp`
+3. Scan QR code with WhatsApp on phone
+4. Restart watcher: `pm2 restart whatsapp-watcher`
+
+**Prevention**: Session expires after 14 days of inactivity - ensure phone stays connected
+
+---
 
 **Problem**: WhatsApp Web logged out
-**Solution**: Check WhatsApp on phone is connected to internet. Session expires after 14 days of inactivity.
+
+**Solution**:
+1. Check phone internet connection
+2. Verify WhatsApp app is working on phone
+3. Re-scan QR code (follow session expiration procedure)
+4. Check `whatsapp_session.json` exists and is valid
+
+**Prevention**: Keep phone connected to internet and WhatsApp app active
+
+---
+
+**Problem**: Messages not detected
+
+**Solution**:
+1. Verify monitored contacts in `Company_Handbook.md` → Watcher Configuration
+2. Check contact names match exactly as in WhatsApp Web
+3. Test manually: Send test message from monitored contact
+4. Check watcher logs: `pm2 logs whatsapp-watcher`
+
+---
 
 ### PM2 Issues
 
 **Problem**: Watcher shows "errored" status
-**Solution**: Check logs: `pm2 logs watcher-name`. Fix error and restart: `pm2 restart watcher-name`
 
-**Problem**: Watchers not restarting after system reboot
-**Solution**: Enable PM2 startup: `pm2 startup` (follow displayed instructions), then `pm2 save`
+**Solution**:
+1. Check logs: `pm2 logs watcher-name`
+2. Common causes: Missing env vars, invalid credentials, network issues, missing dependencies
+3. Fix root cause (update credentials, fix config, install dependencies)
+4. Restart: `pm2 restart watcher-name`
+5. Verify: `pm2 status` should show "online"
+
+**Prevention**: Test watchers manually before PM2, verify all environment variables set
+
+---
+
+**Problem**: PM2 not restarting after reboot
+
+**Solution**:
+1. **Linux/macOS**: `pm2 startup` (follow instructions), then `pm2 save`
+2. **Windows**: Install PM2 Windows Service or use Task Scheduler (see Phase 7)
+3. Verify startup script/service is installed
+4. Test reboot and verify `pm2 status` shows all watchers online
+
+**Prevention**: Always run `pm2 save` after adding new watchers
+
+---
+
+**Problem**: PM2 watcher keeps restarting (crash loop)
+
+**Solution**:
+1. Check restart reason: `pm2 logs watcher-name`
+2. Common causes: Unhandled exception, missing dependencies, invalid config, network timeout
+3. Fix root cause
+4. Check `max_restarts` in `ecosystem.config.js` (default: 10)
+5. Manual test: `python run_watcher.py watcher-type` to reproduce error
+
+**Prevention**: Add proper error handling, test thoroughly before deployment
+
+---
+
+**Problem**: PM2 processes not visible after `pm2 kill`
+
+**Solution**:
+1. Restore: `pm2 resurrect` (if you ran `pm2 save` before)
+2. Or restart: `pm2 start ecosystem.config.js`
+3. Verify: `pm2 status` should show all processes
+
+**Prevention**: Always run `pm2 save` before making changes
+
+---
+
+## Phase 7: PM2 OS Startup Integration (10 minutes)
+
+### 7.1 Automatic Startup on System Boot
+
+PM2 can automatically start all watchers when your system boots. This ensures 24/7 operation without manual intervention.
+
+#### For macOS and Linux:
+
+**Step 1: Generate Startup Script**
+
+```bash
+cd AI_Employee
+pm2 startup
+```
+
+This will output a command like:
+```bash
+sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u yourusername --hp /home/yourusername
+```
+
+**Step 2: Run the Generated Command**
+
+Copy and run the exact command shown by `pm2 startup`. This installs PM2 as a system service.
+
+**Step 3: Save Current Process List**
+
+```bash
+pm2 save
+```
+
+This saves your current PM2 process list so it will be restored on boot.
+
+**Step 4: Verify**
+
+```bash
+# Reboot your system, then check:
+pm2 status
+```
+
+All watchers should be running automatically.
+
+**To Disable Auto-Startup:**
+```bash
+pm2 unstartup
+```
+
+#### For Windows:
+
+**Option 1: Using PM2 Windows Service (Recommended)**
+
+1. **Install PM2 Windows Service:**
+   ```powershell
+   npm install -g pm2-windows-service
+   pm2-service-install
+   ```
+
+2. **Configure PM2:**
+   ```powershell
+   cd AI_Employee
+   pm2 start ecosystem.config.js
+   pm2 save
+   ```
+
+3. **Start the Service:**
+   ```powershell
+   # Open Services (services.msc)
+   # Find "PM2" service
+   # Set to "Automatic" startup type
+   # Start the service
+   ```
+
+**Option 2: Using Windows Task Scheduler**
+
+1. **Create Startup Script** (`start_pm2.bat`):
+   ```batch
+   @echo off
+   cd /d D:\Hackathon-0_Ai-Employee\AI_Employee
+   pm2 resurrect
+   ```
+
+2. **Add to Task Scheduler:**
+   - Open Task Scheduler (`taskschd.msc`)
+   - Create Basic Task
+   - Name: "PM2 AI Employee Startup"
+   - Trigger: "When the computer starts"
+   - Action: "Start a program"
+   - Program: `C:\path\to\start_pm2.bat`
+   - Check "Run with highest privileges"
+   - Save
+
+3. **Save PM2 Process List:**
+   ```powershell
+   cd AI_Employee
+   pm2 save
+   ```
+
+**Option 3: Using NSSM (Non-Sucking Service Manager)**
+
+1. **Download NSSM**: https://nssm.cc/download
+
+2. **Install PM2 as Service:**
+   ```powershell
+   nssm install PM2-AI-Employee "C:\Program Files\nodejs\npm.cmd" "run pm2 resurrect"
+   ```
+
+3. **Configure Service:**
+   - Set Startup directory to `D:\Hackathon-0_Ai-Employee\AI_Employee`
+   - Set Startup type to "Automatic"
+   - Start the service
+
+### 7.2 Testing Auto-Startup
+
+**Test Procedure:**
+
+1. **Save current state:**
+   ```bash
+   pm2 save
+   ```
+
+2. **Reboot your system**
+
+3. **After reboot, verify:**
+   ```bash
+   pm2 status
+   ```
+
+4. **Expected Result:**
+   - All watchers show "online" status
+   - Uptime shows time since system boot
+   - Dashboard.md shows watcher status
+
+**If Watchers Don't Start:**
+
+- **Linux/macOS**: Check PM2 service status: `systemctl status pm2-yourusername` or `launchctl list | grep pm2`
+- **Windows**: Check Task Scheduler history or Services panel
+- **All Platforms**: Check PM2 logs: `pm2 logs`
+- **Verify VAULT_PATH**: Ensure environment variable is set correctly in ecosystem.config.js
+
+### 7.3 PM2 Crash Recovery Testing
+
+Test that PM2 automatically restarts crashed watchers:
+
+```bash
+cd AI_Employee
+python test_pm2_crash_recovery.py gmail-watcher
+```
+
+**Expected Behavior:**
+1. Watcher crashes (intentional)
+2. PM2 detects crash within 10 seconds
+3. PM2 restarts watcher automatically
+4. Dashboard shows restart_count increment
+5. Logs show restart event
+
+**Verify Restart:**
+```bash
+pm2 status
+pm2 logs gmail-watcher
+```
+
+Check Dashboard.md for restart_count increment in watcher status table.
 
 ---
 
@@ -695,5 +1023,14 @@ If you encounter issues:
 4. Consult troubleshooting section above
 
 **Estimated Total Setup Time**: 90-120 minutes (depending on OAuth setup and testing)
+
+**Time Breakdown** (per SC-017 requirement):
+- Phase 1 (MCP Setup): ~30 minutes
+- Phase 2 (LinkedIn OAuth): ~20 minutes
+- Phase 3 (WhatsApp Session): ~25 minutes
+- Phase 4 (PM2 Config): ~15 minutes
+- Phase 5 (Vault Structure): ~10 minutes
+- Phase 6 (Verification Tests): ~15 minutes
+- **Total**: ~115 minutes (<2 hours requirement met)
 
 **Silver Tier Status**: ✅ Ready for production use after successful testing

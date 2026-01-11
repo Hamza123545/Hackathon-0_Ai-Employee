@@ -193,7 +193,109 @@ After processing action items, update `Dashboard.md` with:
 
 **Auto-Approval Thresholds**: Only create approval requests if action exceeds auto-approval thresholds defined in `Company_Handbook.md`. For actions below threshold, mark as `auto_approved` and proceed (but still log).
 
-### 2.6 Archive Processed Items
+### 2.6 Detect and Generate LinkedIn Post Opportunities (Silver Tier)
+
+When processing action items, scan for LinkedIn posting opportunities:
+
+**Step 1: Keyword Detection**
+
+Scan action item content for LinkedIn-related keywords:
+- Primary keywords: `announce`, `share`, `post about`, `publish`, `broadcast`
+- Secondary keywords: `linkedin update`, `social media`, `professional network`
+- Topic indicators: `thought leadership`, `industry insight`, `AI`, `automation`, `innovation`
+
+**Step 2: Topic Validation**
+
+Check if content aligns with approved topics from `Company_Handbook.md`:
+- AI (artificial intelligence, machine learning, LLMs)
+- Automation (workflow automation, process optimization)
+- Business Innovation (digital transformation, tech trends)
+
+**Step 3: Generate LinkedIn Post Draft**
+
+If keywords detected and topic matches:
+
+1. **Extract key message** from action item content
+2. **Draft post content** (max 280 chars excluding hashtags):
+   - Use engaging, professional tone
+   - Focus on value proposition or insight
+   - Keep it concise and actionable
+3. **Add relevant hashtags** from Company_Handbook.md standard list:
+   - `#AI`, `#Automation`, `#Innovation`, `#TechTrends`, `#DigitalTransformation`
+   - Select 3-5 most relevant hashtags
+4. **Determine risk level**:
+   - `low`: Content < 200 chars, no links, matches approved topics
+   - `medium`: Content >= 200 chars OR contains links
+
+**Step 4: Create LinkedIn Approval Request**
+
+Generate approval request file in `/Pending_Approval/`:
+
+```markdown
+---
+type: approval_request
+action: linkedin_post
+plan_id: /Plans/PLAN_{slug}.md
+source_action_item: /Needs_Action/{original_file}.md
+created: {ISO_TIMESTAMP}
+expires: {ISO_TIMESTAMP + 24h}
+status: pending
+priority: medium
+risk_level: low|medium
+mcp_server: linkedin-mcp
+mcp_tool: create_post
+---
+
+## LinkedIn Post Draft
+
+**Content**:
+{generated_post_content}
+
+**Hashtags**: #AI #Automation #Innovation
+
+**Visibility**: PUBLIC
+
+**Character Count**: {count}/280
+
+## Risk Assessment
+
+- Risk Level: {low|medium}
+- Reason: {explanation}
+- Auto-Approval Eligible: {yes|no}
+
+## Parameters
+
+- **text**: {post_content_with_hashtags}
+- **visibility**: PUBLIC
+- **hashtags**: ["AI", "Automation", "Innovation"]
+
+## To Approve
+
+Move this file to `/Approved/` folder to publish on LinkedIn.
+
+## To Reject
+
+Move this file to `/Rejected/` folder.
+```
+
+**Example LinkedIn Post Generation**:
+
+Input action item:
+```markdown
+Subject: New AI feature launch announcement
+Content: We've just released our new AI-powered automation feature that reduces manual work by 50%...
+```
+
+Generated LinkedIn post draft:
+```
+Excited to announce our new AI-powered automation feature that reduces manual work by 50%!
+
+This is a game-changer for productivity and efficiency.
+
+#AI #Automation #Innovation #Productivity
+```
+
+### 2.7 Archive Processed Items
 
 After creating the plan (and approval request if needed):
 

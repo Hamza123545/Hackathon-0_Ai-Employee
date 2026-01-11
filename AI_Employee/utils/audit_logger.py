@@ -292,6 +292,13 @@ class AuditLogger:
             extra_fields=extra_fields
         )
 
+        # Validate entry before writing
+        is_valid, validation_errors = self.validate_entry(entry)
+        if not is_valid:
+            raise ValueError(
+                f"Invalid audit log entry: {', '.join(validation_errors)}"
+            )
+
         log_path = self._get_log_file_path()
         entries = self._load_log_entries(log_path)
         entries.append(entry)
@@ -409,3 +416,152 @@ class AuditLogger:
         """
         entries = self.get_entries(date)
         return sum(1 for e in entries if e.get('action_type') == action_type)
+
+    def validate_entry(self, entry: dict[str, Any]) -> tuple[bool, list[str]]:
+        """
+        Validate an audit log entry against required schema.
+
+        Checks:
+        - All required fields present (timestamp, action_type, actor, target, approval_status, result)
+        - entry_id is valid UUID v4
+        - timestamp is valid ISO 8601 format
+        - action_type is valid enum value
+        - actor is valid enum value
+        - approval_status is valid enum value
+        - result is valid enum value
+
+        Args:
+            entry: Log entry dict to validate.
+
+        Returns:
+            Tuple of (is_valid, list_of_errors).
+        """
+        errors: list[str] = []
+        required_fields = [
+            'timestamp', 'action_type', 'actor', 'target',
+            'approval_status', 'result'
+        ]
+
+        # Check required fields
+        for field in required_fields:
+            if field not in entry:
+                errors.append(f"Missing required field: {field}")
+
+        # Validate entry_id is UUID v4
+        entry_id = entry.get('entry_id', '')
+        if entry_id:
+            try:
+                uuid.UUID(entry_id, version=4)
+            except (ValueError, TypeError):
+                errors.append(f"Invalid entry_id format (must be UUID v4): {entry_id}")
+
+        # Validate timestamp is ISO 8601
+        timestamp = entry.get('timestamp', '')
+        if timestamp:
+            try:
+                datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+            except (ValueError, TypeError):
+                errors.append(f"Invalid timestamp format (must be ISO 8601): {timestamp}")
+
+        # Validate action_type enum
+        valid_action_types = [
+            'email_send', 'linkedin_post', 'browser_action',
+            'watcher_detection', 'approval_created', 'approval_approved',
+            'approval_rejected', 'approval_executed', 'custom'
+        ]
+        action_type = entry.get('action_type', '')
+        if action_type and action_type not in valid_action_types:
+            errors.append(f"Invalid action_type (must be one of {valid_action_types}): {action_type}")
+
+        # Validate actor enum
+        valid_actors = ['claude-code', 'user', 'system']
+        actor = entry.get('actor', '')
+        if actor and actor not in valid_actors:
+            errors.append(f"Invalid actor (must be one of {valid_actors}): {actor}")
+
+        # Validate approval_status enum
+        valid_approval_statuses = ['approved', 'auto_approved', 'rejected', 'not_required']
+        approval_status = entry.get('approval_status', '')
+        if approval_status and approval_status not in valid_approval_statuses:
+            errors.append(
+                f"Invalid approval_status (must be one of {valid_approval_statuses}): {approval_status}"
+            )
+
+        # Validate result enum
+        valid_results = ['success', 'failure', 'partial']
+        result = entry.get('result', '')
+        if result and result not in valid_results:
+            errors.append(f"Invalid result (must be one of {valid_results}): {result}")
+
+        return len(errors) == 0, errors
+
+    def cleanup_old_logs(
+        self,
+        retention_days: int = 90,
+        archive: bool = True
+    ) -> dict[str, Any]:
+        """
+        Clean up audit logs older than retention period.
+
+        Args:
+            retention_days: Number of days to retain logs (default: 90).
+            archive: If True, compress old logs to .gz before deleting.
+
+        Returns:
+            Dict with cleanup statistics: files_archived, files_deleted, total_size_freed.
+        """
+        import gzip
+        import shutil
+        from datetime import timedelta
+
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=retention_days)
+        stats = {
+            'files_archived': 0,
+            'files_deleted': 0,
+            'total_size_freed': 0
+        }
+
+        if not self.logs_path.exists():
+            return stats
+
+        # Find all log files
+        for log_file in self.logs_path.glob('*.json'):
+            # Skip if already archived
+            if log_file.name.endswith('.gz'):
+                continue
+
+            # Parse date from filename (YYYY-MM-DD.json)
+            try:
+                date_str = log_file.stem
+                file_date = datetime.strptime(date_str, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+
+                # Check if file is older than retention period
+                if file_date < cutoff_date:
+                    file_size = log_file.stat().st_size
+
+                    if archive:
+                        # Compress to .gz
+                        gz_path = log_file.with_suffix('.json.gz')
+                        try:
+                            with open(log_file, 'rb') as f_in:
+                                with gzip.open(gz_path, 'wb') as f_out:
+                                    shutil.copyfileobj(f_in, f_out)
+                            log_file.unlink()  # Delete original after compression
+                            stats['files_archived'] += 1
+                            stats['total_size_freed'] += file_size
+                        except OSError as e:
+                            # If compression fails, just delete
+                            log_file.unlink()
+                            stats['files_deleted'] += 1
+                            stats['total_size_freed'] += file_size
+                    else:
+                        # Delete without archiving
+                        log_file.unlink()
+                        stats['files_deleted'] += 1
+                        stats['total_size_freed'] += file_size
+
+            except (ValueError, OSError):
+                # Skip files that don't match date pattern or can't be processed
+                continue
+
+        return stats

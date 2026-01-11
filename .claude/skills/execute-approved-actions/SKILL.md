@@ -287,10 +287,11 @@ Audit logs in `/Logs/YYYY-MM-DD.json`:
    - Capture execution result
 
 4. **Handle Results**
+   - **MANDATORY: Log to audit log FIRST** (`/Logs/YYYY-MM-DD.json`) using `AuditLogger.log_execution()`
+   - **CRITICAL**: If audit logging fails, DO NOT move file - treat as critical error
    - Update approval file with execution metadata
    - Update related plan file (mark checkboxes)
-   - Log to audit log (`/Logs/YYYY-MM-DD.json`)
-   - Move file to `/Done/` (success) or `/Rejected/` (failure)
+   - Move file to `/Done/` (success) or `/Rejected/` (failure) ONLY after successful audit logging
 
 5. **Update Dashboard**
    - Update executed actions count
@@ -348,76 +349,503 @@ Audit logs in `/Logs/YYYY-MM-DD.json`:
 
 ## 6. MCP Server Integration
 
-### Required MCP Servers for Silver Tier
+### Silver Tier MCP Servers
 
-This skill requires MCP servers to be configured in Claude Code. Common servers:
+This skill integrates with three custom FastMCP servers implemented in Python:
 
-1. **Email MCP Server**:
-   - Name: `email` or `gmail-mcp`
-   - Tools: `send_email`, `send_reply`, `draft_email`
-   - Configuration: SMTP credentials or Gmail API
-
-2. **LinkedIn MCP Server**:
-   - Name: `linkedin` (custom or third-party)
-   - Tools: `create_post`, `like_post`, `send_message`
-   - Configuration: LinkedIn API credentials
-
-3. **Browser MCP Server**:
-   - Name: `browser` or `playwright-mcp`
-   - Tools: `navigate`, `click`, `type`, `fill_form`, `screenshot`
-   - Configuration: Browser binary paths
-
-4. **Payment MCP Server** (Optional):
-   - Name: `payment` or `banking` (custom)
-   - Tools: `initiate_payment`, `check_balance`
-   - Configuration: Bank API credentials
+| Server | Location | Tools | Purpose |
+|--------|----------|-------|---------|
+| `email-mcp` | `AI_Employee/mcp_servers/email_mcp.py` | `send_email`, `health_check` | Send emails via SMTP with TLS |
+| `linkedin-mcp` | `AI_Employee/mcp_servers/linkedin_mcp.py` | `create_post`, `health_check` | Post to LinkedIn via API v2 |
+| `playwright-mcp` | `AI_Employee/mcp_servers/playwright_mcp.py` | `browser_action`, `take_screenshot`, `health_check` | Browser automation |
 
 ### MCP Server Configuration
 
-MCP servers must be configured in Claude Code settings (typically `~/.config/claude-code/mcp.json` or similar):
+MCP servers are configured via environment variables and run as stdio-based servers:
 
-```json
-{
-  "mcpServers": {
-    "email": {
-      "command": "node",
-      "args": ["/path/to/email-mcp/index.js"],
-      "env": {
-        "SMTP_HOST": "smtp.gmail.com",
-        "SMTP_USER": "${GMAIL_USER}",
-        "SMTP_PASS": "${GMAIL_PASS}"
-      }
-    },
-    "linkedin": {
-      "command": "python",
-      "args": ["-m", "linkedin_mcp.server"],
-      "env": {
-        "LINKEDIN_API_KEY": "${LINKEDIN_API_KEY}"
-      }
-    },
-    "browser": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-puppeteer"],
-      "env": {
-        "HEADLESS": "true"
-      }
+**Email MCP Configuration** (`.env`):
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=user@gmail.com
+SMTP_PASSWORD=app_password
+FROM_ADDRESS=user@gmail.com
+SMTP_USE_TLS=true
+```
+
+**LinkedIn MCP Configuration** (`.env`):
+```env
+LINKEDIN_ACCESS_TOKEN=AQV...
+LINKEDIN_PERSON_URN=urn:li:person:ABCDEF123
+LINKEDIN_API_VERSION=202601
+```
+
+**Playwright MCP Configuration** (`.env`):
+```env
+PLAYWRIGHT_BROWSER=chromium
+PLAYWRIGHT_HEADLESS=true
+PLAYWRIGHT_SCREENSHOT_DIR=D:/AI_Employee/Logs/screenshots
+PLAYWRIGHT_TIMEOUT_MS=30000
+```
+
+### MCP Server Invocation Pattern
+
+**Step 1: Health Check Before Execution**
+
+Before invoking any MCP tool, ALWAYS run health_check to verify server availability:
+
+```python
+# For email-mcp
+from AI_Employee.mcp_servers.email_mcp import health_check as email_health
+result = email_health()
+if result['status'] != 'available':
+    # Handle MCP_SERVER_UNAVAILABLE error
+
+# For linkedin-mcp
+from AI_Employee.mcp_servers.linkedin_mcp import health_check as linkedin_health
+result = linkedin_health()
+if result['status'] != 'available':
+    # Handle AUTH_EXPIRED or NETWORK_ERROR
+
+# For playwright-mcp
+from AI_Employee.mcp_servers.playwright_mcp import health_check as playwright_health
+result = playwright_health()
+if result['status'] != 'available':
+    # Handle BROWSER_ERROR
+```
+
+**Step 2: Invoke MCP Tool Based on Action Type**
+
+```python
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+from AI_Employee.mcp_servers.email_mcp import send_email
+from AI_Employee.mcp_servers.linkedin_mcp import create_post
+from AI_Employee.mcp_servers.playwright_mcp import browser_action
+from AI_Employee.utils.audit_logger import AuditLogger
+from AI_Employee.utils.sanitizer import CredentialSanitizer
+from AI_Employee.models.approval_request import parse_approval_file
+
+# Parse approval file
+approval = parse_approval_file(Path('/Approved/APPROVAL_email_20260109.md'))
+start_time = time.time()
+
+# Route to correct MCP server based on action_type
+if approval.action_type == 'email_send':
+    result = send_email(
+        to=approval.parameters.get('to'),
+        subject=approval.parameters.get('subject'),
+        body=approval.parameters.get('body'),
+        is_html=approval.parameters.get('is_html', False),
+        attachments=approval.parameters.get('attachments')
+    )
+
+elif approval.action_type == 'linkedin_post':
+    result = create_post(
+        text=approval.parameters.get('text'),
+        visibility=approval.parameters.get('visibility', 'PUBLIC'),
+        hashtags=approval.parameters.get('hashtags')
+    )
+
+elif approval.action_type == 'browser_action':
+    result = browser_action(
+        url=approval.parameters.get('url'),
+        action_type=approval.parameters.get('action_type', 'navigate'),
+        selector=approval.parameters.get('selector'),
+        value=approval.parameters.get('value'),
+        screenshot=True,
+        form_fields=approval.parameters.get('form_fields')
+    )
+
+execution_duration_ms = int((time.time() - start_time) * 1000)
+```
+
+**Step 3: Log Execution with AuditLogger (MANDATORY - MUST succeed before moving file)**
+
+**CRITICAL REQUIREMENT**: Audit logging is MANDATORY and must succeed before moving approval files. If logging fails, treat as critical error - DO NOT move file, DO NOT update plan, log error to console.
+
+```python
+from AI_Employee.utils.audit_logger import AuditLogger
+from AI_Employee.utils.sanitizer import CredentialSanitizer
+
+# Initialize logger
+sanitizer = CredentialSanitizer()
+logger = AuditLogger(logs_path=Path('AI_Employee/Logs'), sanitizer=sanitizer)
+
+# Log execution (parameters are auto-sanitized)
+# MUST catch exceptions - if this fails, do not proceed with file movement
+try:
+    entry_id = logger.log_execution(
+    action_type=approval.action_type,  # 'email_send', 'linkedin_post', 'browser_action'
+    actor='claude-code',
+    target=approval.target,
+    parameters=approval.parameters,  # Will be sanitized automatically
+    approval_status='approved',
+    approval_by='user',
+    approval_timestamp=approval.approval_timestamp,
+    mcp_server=approval.mcp_server,
+    result='success' if result.get('status') in ['sent', 'published', 'success'] else 'failure',
+    error=result.get('error'),
+    error_code=result.get('error_code'),
+    execution_duration_ms=execution_duration_ms,
+    approval_request_id=approval.id,
+    extra_fields={
+        'message_id': result.get('message_id'),
+        'post_id': result.get('post_id'),
+        'post_url': result.get('post_url'),
+        'screenshot_path': result.get('screenshot_path')
     }
-  }
+    )
+    # Logging succeeded - proceed with file movement
+except Exception as log_error:
+    # CRITICAL: If audit logging fails, do NOT move file
+    print(f"CRITICAL ERROR: Audit logging failed: {log_error}")
+    print(f"Approval file NOT moved - manual intervention required: {approval_file_path}")
+    raise  # Re-raise to prevent file movement
+)
+```
+
+### LinkedIn Posting Rules Enforcement (T054/T055)
+
+Before executing LinkedIn posts, ALWAYS check posting rules:
+
+```python
+from AI_Employee.utils.linkedin_rules import LinkedInPostingRules, get_linkedin_metrics
+
+# Initialize rules enforcer
+rules = LinkedInPostingRules(
+    logs_path=Path('AI_Employee/Logs'),
+    max_posts_per_day=3,          # From Company_Handbook.md
+    posting_schedule_start=9,      # 9 AM
+    posting_schedule_end=17        # 5 PM
+)
+
+# Check if posting is allowed
+can_post, block_reason = rules.can_post_now()
+
+if not can_post:
+    if 'rate_limit_daily_exceeded' in block_reason:
+        # T054: Daily limit reached - queue for next day
+        # Log rate_limit_daily_exceeded to audit
+        logger.log_execution(
+            action_type='linkedin_post',
+            actor='system',
+            target='LinkedIn',
+            result='failure',
+            error=block_reason,
+            error_code='RATE_LIMIT_DAILY_EXCEEDED'
+        )
+        # Keep approval file in /Approved/ with queued status
+        # Add queue_until timestamp to file
+
+    elif 'outside_posting_schedule' in block_reason:
+        # T055: Outside business hours - queue for next window
+        next_window = rules.get_next_posting_window()
+        # Keep approval file with estimated post time
+        # Update approval file with queue status
+```
+
+**Daily Post Limit Check (T054)**:
+```python
+posts_today = rules.count_linkedin_posts_today()
+max_posts = rules.max_posts_per_day  # 3 by default
+
+if posts_today >= max_posts:
+    # Queue post for tomorrow
+    # Log: rate_limit_daily_exceeded
+    # DO NOT execute
+    # Keep in /Approved/ with status: queued
+```
+
+**Posting Schedule Check (T055)**:
+```python
+if not rules.is_within_posting_schedule():
+    # Current time outside 9am-5pm
+    next_window = rules.get_next_posting_window()
+    # Queue post for next business hour
+    # Keep in /Approved/ with estimated_post_time
+```
+
+**Queue Behavior**:
+- Posts that violate rules are NOT rejected
+- Posts remain in `/Approved/` with `status: queued`
+- Add `queue_until: {ISO_TIMESTAMP}` to approval file
+- Orchestrator re-checks queued posts on each cycle
+- Execute when rules permit (next day or next business hour)
+
+### Error Codes and Handling
+
+Each MCP server returns specific error codes:
+
+**Email MCP Error Codes**:
+| Error Code | Description | Recovery |
+|------------|-------------|----------|
+| `SMTP_AUTH_FAILED` | Invalid credentials | Check SMTP_USERNAME/PASSWORD |
+| `SMTP_CONNECTION_ERROR` | Cannot connect to SMTP | Check SMTP_HOST/PORT |
+| `INVALID_RECIPIENT` | Bad email address | Verify recipient |
+| `ATTACHMENT_TOO_LARGE` | >25MB attachments | Reduce attachment size |
+
+**LinkedIn MCP Error Codes**:
+| Error Code | Description | Recovery |
+|------------|-------------|----------|
+| `AUTH_EXPIRED` | Token expired (60 days) | Re-authenticate OAuth, create /Needs_Action/ notification |
+| `RATE_LIMIT_EXCEEDED` | Too many posts | Wait and retry |
+| `RATE_LIMIT_DAILY_EXCEEDED` | Daily limit (3) reached | Queue for next day |
+| `OUTSIDE_POSTING_SCHEDULE` | Outside business hours | Queue for next window |
+| `INVALID_CONTENT` | Policy violation | Review post content |
+| `NETWORK_ERROR` | API unreachable | Check connectivity |
+
+### LinkedIn AUTH_EXPIRED Handling (T057)
+
+When LinkedIn MCP returns `AUTH_EXPIRED` error:
+
+```python
+from AI_Employee.utils.linkedin_rules import (
+    handle_linkedin_auth_expired,
+    check_linkedin_auth_error
+)
+
+# After MCP invocation returns error
+result = linkedin_mcp.create_post(text=post_text, visibility='PUBLIC')
+
+if result.get('status') == 'error':
+    error_code = result.get('error_code')
+    error_message = result.get('error')
+
+    if check_linkedin_auth_error(error_code, error_message):
+        # T057: Create notification in /Needs_Action/
+        notification_path = handle_linkedin_auth_expired(
+            needs_action_path=Path('AI_Employee/Needs_Action'),
+            approval_file_path=approval_file_path,  # Keep in /Approved/
+            error_message=error_message
+        )
+
+        # Log to audit
+        logger.log_execution(
+            action_type='linkedin_post',
+            actor='system',
+            target='LinkedIn',
+            result='failure',
+            error=error_message,
+            error_code='AUTH_EXPIRED',
+            extra_fields={
+                'notification_created': str(notification_path),
+                'retry_after_credential_refresh': True
+            }
+        )
+
+        # DO NOT move approval file to /Rejected/
+        # Keep in /Approved/ for retry after credentials are refreshed
+```
+
+**AUTH_EXPIRED Flow**:
+1. Detect AUTH_EXPIRED from MCP response
+2. Create notification in `/Needs_Action/` with refresh instructions
+3. Log failure to audit with `retry_after_credential_refresh: true`
+4. **Keep approval file in `/Approved/`** - do NOT reject
+5. User refreshes credentials per notification instructions
+6. Next orchestrator cycle retries the post
+
+**Notification Contents**:
+- Clear instructions for refreshing LinkedIn OAuth token
+- Link to LinkedIn Developer Portal
+- Required OAuth scopes
+- Steps to update `.env` file
+- Reference to failed approval file
+
+**Playwright MCP Error Codes**:
+| Error Code | Description | Recovery |
+|------------|-------------|----------|
+| `BROWSER_ERROR` | Chromium not installed | Run: playwright install chromium |
+| `SELECTOR_NOT_FOUND` | Element not found | Verify CSS selector |
+| `TIMEOUT` | Page load timeout | Increase PLAYWRIGHT_TIMEOUT_MS |
+| `NAVIGATION_ERROR` | Page navigation failed | Verify URL |
+
+### Handling MCP Errors in Execution Flow
+
+```python
+# Error handling pattern
+def execute_approved_action(approval_file_path: Path) -> dict:
+    from AI_Employee.models.approval_request import parse_approval_file
+    from AI_Employee.utils.audit_logger import AuditLogger
+
+    approval = parse_approval_file(approval_file_path)
+    logs_path = Path('AI_Employee/Logs')
+    logger = AuditLogger(logs_path)
+
+    # 1. Check expiration
+    if approval.created_timestamp and approval.approval_timestamp:
+        age_hours = (datetime.now() - approval.created_timestamp).total_seconds() / 3600
+        if age_hours > 24:
+            # Move to /Rejected/, log expiration
+            logger.log_execution(
+                action_type=approval.action_type,
+                actor='system',
+                target=approval.target,
+                result='failure',
+                error='Approval request expired (>24 hours)',
+                error_code='EXPIRED'
+            )
+            # Move file to /Rejected/
+            return {'status': 'error', 'error': 'Expired', 'error_code': 'EXPIRED'}
+
+    # 2. Health check MCP server
+    health_result = _check_mcp_health(approval.mcp_server)
+    if health_result['status'] != 'available':
+        logger.log_execution(
+            action_type=approval.action_type,
+            actor='system',
+            target=approval.target,
+            mcp_server=approval.mcp_server,
+            result='failure',
+            error=f"MCP server unavailable: {health_result.get('error', 'Unknown')}",
+            error_code='MCP_SERVER_UNAVAILABLE'
+        )
+        # Move file to /Rejected/
+        # Create notification in /Needs_Action/
+        return {'status': 'error', 'error_code': 'MCP_SERVER_UNAVAILABLE'}
+
+    # 3. Validate parameters
+    validation_error = _validate_parameters(approval)
+    if validation_error:
+        logger.log_execution(
+            action_type=approval.action_type,
+            actor='system',
+            target=approval.target,
+            result='failure',
+            error=validation_error,
+            error_code='PARAMETER_VALIDATION_FAILED'
+        )
+        # Move file to /Rejected/
+        return {'status': 'error', 'error_code': 'PARAMETER_VALIDATION_FAILED'}
+
+    # 4. Execute via MCP
+    start_time = time.time()
+    try:
+        result = _invoke_mcp_tool(approval)
+        execution_duration_ms = int((time.time() - start_time) * 1000)
+
+        if result.get('status') in ['sent', 'published', 'success']:
+            # Success: Log, move to /Done/
+            logger.log_execution(
+                action_type=approval.action_type,
+                actor='claude-code',
+                target=approval.target,
+                parameters=approval.parameters,
+                approval_status='approved',
+                approval_by='user',
+                mcp_server=approval.mcp_server,
+                result='success',
+                execution_duration_ms=execution_duration_ms,
+                approval_request_id=approval.id
+            )
+            # Move file to /Done/
+            # Update related plan file
+            return result
+        else:
+            # Failure: Log, move to /Rejected/
+            logger.log_execution(
+                action_type=approval.action_type,
+                actor='claude-code',
+                target=approval.target,
+                mcp_server=approval.mcp_server,
+                result='failure',
+                error=result.get('error'),
+                error_code=result.get('error_code', 'MCP_TOOL_FAILED'),
+                execution_duration_ms=execution_duration_ms
+            )
+            # Move file to /Rejected/
+            # Create notification in /Needs_Action/
+            return result
+
+    except Exception as e:
+        logger.log_execution(
+            action_type=approval.action_type,
+            actor='system',
+            target=approval.target,
+            mcp_server=approval.mcp_server,
+            result='failure',
+            error=str(e),
+            error_code='UNKNOWN'
+        )
+        return {'status': 'error', 'error': str(e), 'error_code': 'UNKNOWN'}
+```
+
+### Credential Sanitization
+
+**CRITICAL**: Always sanitize parameters before logging:
+
+```python
+from AI_Employee.utils.sanitizer import CredentialSanitizer
+
+sanitizer = CredentialSanitizer()
+
+# Sensitive keys automatically detected and redacted:
+# password, token, api_key, secret, credential, auth, bearer,
+# smtp_password, access_token, refresh_token, private_key,
+# client_secret, authorization
+
+# Token-like strings (>30 chars alphanumeric) are masked as "first4...last4"
+
+# Example:
+params = {
+    'to': 'user@example.com',
+    'smtp_password': 'secret123',  # Will be redacted
+    'body': 'Hello world'
 }
+
+sanitized = sanitizer.sanitize(params)
+# Result: {'to': 'user@example.com', 'smtp_password': '***REDACTED***', 'body': 'Hello world'}
+```
+
+### Update Related Plan File After Execution
+
+After successful execution, update the related plan file:
+
+```python
+import re
+from pathlib import Path
+from datetime import datetime, timezone
+
+def update_plan_file(plan_path: Path, action_description: str, result: dict):
+    """Mark checkbox as completed and add execution note."""
+    if not plan_path.exists():
+        return
+
+    content = plan_path.read_text(encoding='utf-8')
+    timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')
+
+    # Find matching unchecked checkbox containing the action description
+    pattern = rf'- \[ \] (.*{re.escape(action_description[:30])}.*)'
+
+    def replace_checkbox(match):
+        original_text = match.group(1)
+        execution_note = f"\n  - Executed: {timestamp}"
+        if result.get('message_id'):
+            execution_note += f"\n  - Message ID: {result['message_id']}"
+        if result.get('post_url'):
+            execution_note += f"\n  - Post URL: {result['post_url']}"
+        return f"- [x] {original_text}{execution_note}"
+
+    updated_content = re.sub(pattern, replace_checkbox, content, count=1)
+    plan_path.write_text(updated_content, encoding='utf-8')
 ```
 
 ### Verifying MCP Server Availability
 
 Before invoking MCP tools, check if servers are available:
 
-1. Check Claude Code MCP configuration
-2. Verify server processes are running (if applicable)
-3. Test connection (if MCP server supports health check)
+1. Check environment variables are configured
+2. Run health_check tool for the target MCP server
+3. Verify returned status is 'available'
 4. Log server status in Dashboard
 
 If MCP server unavailable:
-- Log error
+- Log error with error code `MCP_SERVER_UNAVAILABLE`
 - Move approval to `/Rejected/` with "MCP server unavailable" note
+- Create notification in `/Needs_Action/` with troubleshooting steps
 - Do not attempt execution
 
 ---

@@ -17,7 +17,8 @@ module.exports = {
     // ============================================
     {
       name: 'gmail-watcher',
-      script: './watchers/gmail_watcher.py',
+      script: './run_watcher.py',
+      args: 'gmail',
       interpreter: 'python',
       cwd: './AI_Employee',
       exec_mode: 'fork',  // Python doesn't support cluster mode
@@ -26,7 +27,7 @@ module.exports = {
       autorestart: true,
       max_restarts: 10,
       min_uptime: '10s',
-      restart_delay: 4000,
+      restart_delay: 5000,
 
       // Watch mode disabled (watchers poll internally)
       watch: false,
@@ -36,13 +37,14 @@ module.exports = {
         WATCHER_TYPE: 'gmail',
         CHECK_INTERVAL: '300',  // 5 minutes
         PYTHONUNBUFFERED: '1',
-        LOG_LEVEL: 'INFO'
+        LOG_LEVEL: 'INFO',
+        VAULT_PATH: process.env.VAULT_PATH || require('path').resolve(__dirname)
       },
 
       // Logging
-      error_file: './Logs/gmail-watcher-err.log',
-      out_file: './Logs/gmail-watcher-out.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      error_file: './logs/gmail-watcher-err.log',
+      out_file: './logs/gmail-watcher-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
       merge_logs: true,
 
       // Memory management
@@ -54,7 +56,8 @@ module.exports = {
 
     {
       name: 'whatsapp-watcher',
-      script: './watchers/whatsapp_watcher.py',
+      script: './run_watcher.py',
+      args: 'whatsapp',
       interpreter: 'python',
       cwd: './AI_Employee',
       exec_mode: 'fork',
@@ -63,7 +66,7 @@ module.exports = {
       autorestart: true,
       max_restarts: 10,
       min_uptime: '10s',
-      restart_delay: 4000,
+      restart_delay: 5000,
 
       // Watch mode disabled
       watch: false,
@@ -73,13 +76,14 @@ module.exports = {
         WATCHER_TYPE: 'whatsapp',
         CHECK_INTERVAL: '300',  // 5 minutes
         PYTHONUNBUFFERED: '1',
-        LOG_LEVEL: 'INFO'
+        LOG_LEVEL: 'INFO',
+        VAULT_PATH: process.env.VAULT_PATH || require('path').resolve(__dirname)
       },
 
       // Logging
-      error_file: './Logs/whatsapp-watcher-err.log',
-      out_file: './Logs/whatsapp-watcher-out.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      error_file: './logs/whatsapp-watcher-err.log',
+      out_file: './logs/whatsapp-watcher-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
       merge_logs: true,
 
       // Playwright needs more memory
@@ -91,7 +95,8 @@ module.exports = {
 
     {
       name: 'linkedin-watcher',
-      script: './watchers/linkedin_watcher.py',
+      script: './run_watcher.py',
+      args: 'linkedin',
       interpreter: 'python',
       cwd: './AI_Employee',
       exec_mode: 'fork',
@@ -100,7 +105,7 @@ module.exports = {
       autorestart: true,
       max_restarts: 10,
       min_uptime: '10s',
-      restart_delay: 4000,
+      restart_delay: 5000,
 
       // Watch mode disabled
       watch: false,
@@ -110,13 +115,15 @@ module.exports = {
         WATCHER_TYPE: 'linkedin',
         CHECK_INTERVAL: '300',  // 5 minutes
         PYTHONUNBUFFERED: '1',
-        LOG_LEVEL: 'INFO'
+        LOG_LEVEL: 'INFO',
+        VAULT_PATH: process.env.VAULT_PATH || require('path').resolve(__dirname),
+        LINKEDIN_ACCESS_TOKEN: process.env.LINKEDIN_ACCESS_TOKEN || ''
       },
 
       // Logging
-      error_file: './Logs/linkedin-watcher-err.log',
-      out_file: './Logs/linkedin-watcher-out.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      error_file: './logs/linkedin-watcher-err.log',
+      out_file: './logs/linkedin-watcher-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
       merge_logs: true,
 
       // API-based watcher uses less memory
@@ -131,7 +138,7 @@ module.exports = {
     // ============================================
     {
       name: 'approval-orchestrator',
-      script: './orchestrator.py',
+      script: './run_orchestrator.py',
       interpreter: 'python',
       cwd: './AI_Employee',
       exec_mode: 'fork',
@@ -140,7 +147,7 @@ module.exports = {
       autorestart: true,
       max_restarts: 10,
       min_uptime: '10s',
-      restart_delay: 4000,
+      restart_delay: 5000,
 
       // Watch mode disabled (orchestrator polls /Approved folder)
       watch: false,
@@ -149,13 +156,14 @@ module.exports = {
       env: {
         APPROVAL_CHECK_INTERVAL: '60',  // 1 minute
         PYTHONUNBUFFERED: '1',
-        LOG_LEVEL: 'INFO'
+        LOG_LEVEL: 'INFO',
+        VAULT_PATH: process.env.VAULT_PATH || require('path').resolve(__dirname)
       },
 
       // Logging
-      error_file: './Logs/orchestrator-err.log',
-      out_file: './Logs/orchestrator-out.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      error_file: './logs/orchestrator-err.log',
+      out_file: './logs/orchestrator-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
       merge_logs: true,
 
       // Memory management

@@ -263,6 +263,102 @@ def create_approval_file(
         return None
 
 
+def create_linkedin_post_approval(
+    post_text: str,
+    hashtags: list[str] | None = None,
+    visibility: str = 'PUBLIC',
+    source_action_item: str = '',
+    pending_approval_path: Path | None = None,
+    auto_approval_enabled: bool = False,
+    max_auto_approve_length: int = 200,
+    dry_run: bool = False
+) -> tuple[ApprovalRequest, Path | None]:
+    """
+    Create a LinkedIn post approval request with proper risk assessment.
+
+    This function implements T053 requirements:
+    - Creates APPROVAL_linkedin_post_{timestamp}.md in /Pending_Approval/
+    - Includes commentary text, hashtags, visibility (PUBLIC)
+    - Determines risk_level: low (if meets auto-approval threshold) or medium
+
+    Args:
+        post_text: The LinkedIn post content (max 280 chars recommended).
+        hashtags: List of hashtags (without # symbol).
+        visibility: Post visibility - 'PUBLIC' or 'CONNECTIONS'.
+        source_action_item: Path to the original action item file.
+        pending_approval_path: Path to Pending_Approval folder.
+        auto_approval_enabled: Whether auto-approval is enabled.
+        max_auto_approve_length: Max chars for auto-approval eligibility.
+        dry_run: If True, don't write file.
+
+    Returns:
+        Tuple of (ApprovalRequest, created_file_path or None).
+    """
+    # Default hashtags from Company_Handbook.md
+    if hashtags is None:
+        hashtags = ['AI', 'Automation', 'Innovation']
+
+    # Check if link is present
+    has_link = 'http://' in post_text or 'https://' in post_text
+
+    # Determine risk level based on Company_Handbook.md rules
+    # Low: <200 chars, no links, matches approved topics
+    # Medium: >=200 chars OR contains links
+    text_length = len(post_text)
+    is_low_risk = text_length < max_auto_approve_length and not has_link
+
+    risk_level: RiskLevel = 'low' if is_low_risk else 'medium'
+
+    # Build risk factors list
+    risk_factors = []
+    if text_length >= max_auto_approve_length:
+        risk_factors.append(f"Content length ({text_length} chars) exceeds auto-approval threshold ({max_auto_approve_length})")
+    if has_link:
+        risk_factors.append("Contains external link - requires review")
+    if not risk_factors:
+        risk_factors.append("Meets all auto-approval criteria (short content, no links)")
+
+    # Determine if auto-approvable
+    auto_approvable = is_low_risk and auto_approval_enabled
+
+    # Build full text with hashtags for MCP parameter
+    hashtag_text = ' '.join(f'#{tag}' for tag in hashtags)
+    full_post_text = f"{post_text}\n\n{hashtag_text}" if hashtag_text else post_text
+
+    # Create the approval request
+    approval = ApprovalRequest(
+        action_type='linkedin_post',
+        target='LinkedIn Profile',
+        risk_level=risk_level,
+        rationale=f"LinkedIn post ({text_length} chars) with {len(hashtags)} hashtags",
+        source_action_item=source_action_item,
+        mcp_server='linkedin-mcp',
+        mcp_tool='create_post',
+        parameters={
+            'text': full_post_text,
+            'visibility': visibility,
+            'hashtags': hashtags,
+            'content_preview': post_text[:100] + '...' if len(post_text) > 100 else post_text,
+            'character_count': text_length,
+            'has_link': has_link,
+            'auto_approval_eligible': auto_approvable
+        },
+        risk_factors=risk_factors,
+        notes=f"Character count: {text_length}/280\nAuto-approval eligible: {'Yes' if auto_approvable else 'No'}"
+    )
+
+    # Create file if path provided
+    file_path = None
+    if pending_approval_path:
+        file_path = create_approval_file(
+            approval,
+            pending_approval_path,
+            dry_run=dry_run
+        )
+
+    return approval, file_path
+
+
 def parse_approval_file(file_path: Path) -> ApprovalRequest | None:
     """
     Parse an approval request file and return an ApprovalRequest object.

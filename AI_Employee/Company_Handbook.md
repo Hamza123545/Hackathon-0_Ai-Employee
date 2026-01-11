@@ -101,94 +101,107 @@ Known contacts (medium priority):
 
 ### Email MCP Server
 
-**Server Name**: `email` (or `gmail-mcp`)
+**Status**: ✅ Enabled by default
+
+**Server Name**: `email-mcp`
 
 **Configuration**:
-- Command: `node` or `python` (depends on server implementation)
-- Args: Server-specific (e.g., `["/path/to/email-mcp/index.js"]`)
-- Environment Variables:
-  - `SMTP_HOST`: SMTP server hostname
-  - `SMTP_USER`: SMTP username (or Gmail API credentials)
-  - `SMTP_PASS`: SMTP password (or Gmail OAuth token)
-  - `GMAIL_API_KEY`: If using Gmail API
+- Implementation: Python FastMCP server (`AI_Employee/mcp_servers/email_mcp.py`)
+- Environment Variables (required in `.env`):
+  - `SMTP_HOST`: SMTP server hostname (e.g., `smtp.gmail.com`)
+  - `SMTP_PORT`: SMTP port (e.g., `587` for TLS)
+  - `SMTP_USERNAME`: SMTP username (your email address)
+  - `SMTP_PASSWORD`: SMTP password or app-specific password
+  - `FROM_ADDRESS`: Sender email address
+  - `SMTP_USE_TLS`: `true` or `false` (default: `true`)
 
 **Available Tools**:
-- `send_email`: Send email with subject, body, attachments
-- `send_reply`: Reply to existing email thread
-- `draft_email`: Create draft without sending
+- `send_email`: Send email with subject, body, optional attachments
+- `health_check`: Check SMTP server connectivity and authentication
 
-**Usage Example**:
-```json
-{
-  "name": "email",
-  "command": "node",
-  "args": ["/path/to/email-mcp/index.js"],
-  "env": {
-    "SMTP_HOST": "${SMTP_HOST}",
-    "SMTP_USER": "${SMTP_USER}"
-  }
-}
-```
+**Error Codes**:
+- `SMTP_AUTH_FAILED`: Invalid credentials → use app-specific password
+- `SMTP_CONNECTION_ERROR`: Cannot connect to SMTP server
+- `INVALID_RECIPIENT`: Bad email address format
+- `ATTACHMENT_TOO_LARGE`: Attachment exceeds 25MB limit
 
-### LinkedIn MCP Server (Social Media)
+### LinkedIn MCP Server
 
-**Server Name**: `linkedin`
+**Status**: ✅ Enabled (requires OAuth token)
+
+**Server Name**: `linkedin-mcp`
 
 **Configuration**:
-- Command: `python` or `node` (depends on implementation)
-- Environment Variables:
-  - `LINKEDIN_API_KEY`: LinkedIn API credentials
-  - `LINKEDIN_ACCESS_TOKEN`: OAuth access token
+- Implementation: Python FastMCP server (`AI_Employee/mcp_servers/linkedin_mcp.py`)
+- Environment Variables (required in `.env`):
+  - `LINKEDIN_ACCESS_TOKEN`: OAuth 2.0 access token (get from LinkedIn Developer Portal)
+  - `LINKEDIN_PERSON_URN`: Your LinkedIn person URN (e.g., `urn:li:person:12345`)
+  - `LINKEDIN_API_VERSION`: API version (default: `202601`)
 
 **Available Tools**:
-- `create_post`: Create new LinkedIn post
-- `like_post`: Like an existing post
-- `send_message`: Send direct message
+- `create_post`: Create new LinkedIn post with content and visibility
+- `health_check`: Check LinkedIn API connectivity and token validity
 
-**Approval Required**: Yes (all social media actions)
+**Error Codes**:
+- `AUTH_EXPIRED`: OAuth token expired → refresh token
+- `RATE_LIMIT_EXCEEDED`: Too many requests → reduce posting frequency
+- `INVALID_CONTENT`: Post content violates LinkedIn policies
 
-### Browser/Playwright MCP Server
+### Playwright/Browser MCP Server
 
-**Server Name**: `browser` or `playwright-mcp`
+**Status**: ✅ Enabled (for WhatsApp watcher and browser automation)
+
+**Server Name**: `playwright-mcp`
 
 **Configuration**:
-- Command: `npx`
-- Args: `["-y", "@modelcontextprotocol/server-puppeteer"]`
+- Implementation: Python FastMCP server (`AI_Employee/mcp_servers/playwright_mcp.py`)
+- Environment Variables (optional):
+  - `SCREENSHOT_DIR`: Directory for screenshots (default: `Logs/screenshots/`)
+  - `PLAYWRIGHT_TIMEOUT_MS`: Browser timeout in milliseconds (default: `30000`)
 
 **Available Tools**:
-- `navigate`: Navigate to URL
-- `click`: Click element
-- `type`: Type text
-- `fill_form`: Fill form fields
-- `screenshot`: Take screenshot
+- `browser_action`: Navigate, click, type, fill forms
+- `take_screenshot`: Capture browser screenshot
+- `health_check`: Verify Playwright and Chromium installation
 
-**Approval Required**: Yes (all browser actions)
+**Error Codes**:
+- `BROWSER_ERROR`: Chromium not installed → run `playwright install chromium`
+- `SELECTOR_NOT_FOUND`: Element not found on page
+- `TIMEOUT`: Page load timeout exceeded
+- `NAVIGATION_ERROR`: Page navigation failed
 
-## Approval Thresholds (Silver Tier)
+## Approval Workflow (Silver Tier)
+
+### Auto-Approval Configuration
+
+**Default**: ⚠️ **Disabled** (all actions require manual approval)
+
+**To Enable Auto-Approval**:
+Set `auto_approval_enabled: true` in this handbook and configure thresholds below.
 
 ### Auto-Approve Criteria
 
-Actions meeting ALL criteria below can be auto-approved:
+Actions meeting ALL criteria below can be auto-approved (if enabled):
 
 **Email Replies**:
-- Recipient is in "Known Contacts" list
+- Recipient is in "Known Contacts" list (see Approved Contacts section)
 - Email body < 100 words
 - No attachments
-- Subject does not contain sensitive keywords
-- Below $0 transaction value (not a payment)
+- Subject does not contain sensitive keywords (payment, invoice, urgent, etc.)
+- Risk level: `low` (as determined by Claude Code)
 
 **Social Media**:
-- Auto-approve: Never (all social media posts require approval)
+- Auto-approve: ❌ **Never** (all social media posts require manual approval)
 
 **Payments**:
-- Auto-approve: Never (all payments require approval)
+- Auto-approve: ❌ **Never** (all payments require manual approval)
 
 **Browser Actions**:
-- Auto-approve: Never (all browser actions require approval)
+- Auto-approve: ❌ **Never** (all browser actions require manual approval)
 
 ### Approval Required
 
-**Always require approval for**:
+**Always require manual approval for**:
 - Email to new contacts (not in Known Contacts list)
 - Email with attachments
 - Email longer than 100 words
@@ -196,42 +209,102 @@ Actions meeting ALL criteria below can be auto-approved:
 - All payments and financial transactions
 - All browser automation actions
 - Actions exceeding rate limits
-- Actions flagged as high priority
+- Actions flagged as high priority or high risk
+- Actions with risk_level: `high` or `medium`
+
+### Approval Workflow Steps
+
+1. **Detection**: Watcher detects item → action item created in `/Needs_Action/`
+2. **Processing**: Claude Code processes action → creates plan and approval request
+3. **Approval Request**: File created in `/Pending_Approval/` with risk assessment
+4. **Human Review**: User reviews and moves file to `/Approved/` or `/Rejected/`
+5. **Execution**: ApprovalOrchestrator detects approved file → executes via MCP server
+6. **Audit Logging**: All executions logged to `/Logs/YYYY-MM-DD.json`
+7. **Completion**: File moved to `/Done/` with execution metadata
 
 ### Permission Boundaries
 
 | Action Category | Auto-Approve Threshold | Always Require Approval |
 |----------------|----------------------|------------------------|
-| Email replies | Known contact, < 100 words, no attachments | New contacts, bulk sends, attachments |
-| Social media | Never | All posts, replies, DMs |
-| Payments | Never | All transactions |
-| Browser actions | Never | All navigations, clicks, form fills |
+| Email replies | Known contact, < 100 words, no attachments, low risk | New contacts, bulk sends, attachments, high risk |
+| Social media | ❌ Never | All posts, replies, DMs |
+| Payments | ❌ Never | All transactions |
+| Browser actions | ❌ Never | All navigations, clicks, form fills |
 | File operations | Create, read (vault only) | Delete, move outside vault |
 
 ## Audit Logging (Silver Tier - Mandatory)
 
+### Status
+✅ **Enabled** - All external actions are logged
+
 ### Log Location
 
-All actions logged to: `/Logs/YYYY-MM-DD.json`
+All actions logged to: `/Logs/YYYY-MM-DD.json` (daily JSON files)
 
 ### Required Log Fields
 
-- `timestamp`: ISO 8601 timestamp
-- `action_type`: Type of action (send_email, post_linkedin, etc.)
-- `actor`: Who performed action (claude_code, human, watcher)
-- `target`: Recipient/target of action
-- `parameters`: Action parameters (sanitized - no credentials)
-- `approval_status`: approved, auto_approved, rejected
-- `mcp_server`: MCP server name (if applicable)
-- `mcp_tool`: MCP tool name (if applicable)
-- `result`: success, failed, dry_run
-- `error`: Error details (if failed)
+- `entry_id`: Unique UUID v4 identifier
+- `timestamp`: ISO 8601 timestamp in UTC
+- `action_type`: Type of action (`email_send`, `linkedin_post`, `browser_action`, `watcher_detection`, etc.)
+- `actor`: Who performed action (`claude-code`, `user`, `system`)
+- `target`: Recipient/target of action (email address, URL, etc.)
+- `parameters`: Action parameters (**sanitized** - credentials removed/masked)
+- `approval_status`: `approved`, `auto_approved`, `rejected`, `not_required`
+- `approval_by`: Who approved (`user`, `auto`, `system`, or `null`)
+- `approval_timestamp`: When approval was granted (ISO 8601)
+- `mcp_server`: MCP server name (e.g., `email-mcp`, `linkedin-mcp`)
+- `result`: `success`, `failure`, `partial`
+- `error`: Error message (if failed)
+- `error_code`: Machine-readable error code (if failed)
+- `execution_duration_ms`: Execution time in milliseconds
+- `approval_request_id`: UUID of original approval request (if applicable)
+
+### Credential Sanitization
+
+✅ **Enabled** - All credentials are automatically sanitized before logging
+
+**Sanitized Fields**:
+- `password`, `smtp_password`, `api_key`, `access_token`, `refresh_token`
+- `token`, `secret`, `credential`, `auth`, `bearer`, `authorization`
+- Token-like strings (>30 chars alphanumeric) are masked: `{first4}...{last4}`
+
+**Verification**: Run `python -m pytest AI_Employee/tests/test_audit_logging.py::TestAuditLogging::test_zero_credential_leaks_sample_100_entries` to verify zero credential leaks.
 
 ### Log Retention
 
-- Minimum retention: 90 days
-- Archive old logs: Move to `/Logs/Archive/YYYY-MM/`
-- Never delete logs containing payment or financial transactions
+- **Retention Period**: 90 days (configurable via `AUDIT_LOG_RETENTION_DAYS` environment variable)
+- **Archive Policy**: Logs older than retention period are compressed to `.gz` format
+- **Cleanup**: Automatic cleanup runs via PM2 cron_restart or manual execution
+- **Never Delete**: Logs containing payment or financial transactions are preserved indefinitely
+
+### Log File Format
+
+Each daily log file contains:
+```json
+{
+  "entries": [
+    {
+      "entry_id": "uuid-v4",
+      "timestamp": "2026-01-09T15:30:00.123456Z",
+      "action_type": "email_send",
+      "actor": "claude-code",
+      "target": "recipient@example.com",
+      "parameters": {
+        "subject": "Test Email",
+        "body_preview": "Test body content..."
+      },
+      "approval_status": "approved",
+      "approval_by": "user",
+      "approval_timestamp": "2026-01-09T15:25:00Z",
+      "mcp_server": "email-mcp",
+      "result": "success",
+      "error": null,
+      "execution_duration_ms": 1234,
+      "approval_request_id": "uuid-of-approval"
+    }
+  ]
+}
+```
 
 ## Bronze Tier Limitations
 
@@ -249,3 +322,66 @@ All actions logged to: `/Logs/YYYY-MM-DD.json`
 - MCP servers execute approved actions
 - Mandatory audit logging for all external actions
 - Human-in-the-loop approval required for sensitive operations
+
+## LinkedIn Posting Rules (Silver Tier)
+
+### Posting Limits and Schedule
+
+| Setting | Value | Description |
+|---------|-------|-------------|
+| `max_posts_per_day` | 3 | Maximum LinkedIn posts allowed per calendar day |
+| `posting_schedule_start` | 09:00 | Start of posting window (business hours) |
+| `posting_schedule_end` | 17:00 | End of posting window (business hours) |
+| `posting_timezone` | local | Timezone for schedule enforcement |
+| `content_length_max` | 280 | Maximum characters for post content (excluding hashtags) |
+| `rate_limit_delay_seconds` | 5 | Minimum delay between consecutive posts |
+
+### Approved Topics
+
+Posts should align with these approved topics:
+- **AI**: Artificial intelligence, machine learning, LLMs, Claude, ChatGPT
+- **Automation**: Workflow automation, process optimization, productivity tools
+- **Business Innovation**: Digital transformation, tech trends, startup insights
+
+### Standard Hashtags
+
+Default hashtags to include (up to 5 per post):
+- `#AI`
+- `#Automation`
+- `#Innovation`
+- `#TechTrends`
+- `#DigitalTransformation`
+
+### Auto-Approval Threshold
+
+LinkedIn posts may be auto-approved if ALL conditions are met:
+- `auto_approval_enabled`: false (default - all posts require manual approval)
+- Post content length < 200 characters
+- No external links included
+- Content matches approved topics
+- Within daily post limit (< max_posts_per_day)
+
+**Note**: Even when auto-approval is enabled, LinkedIn posts are considered `risk_level: low` only if they meet the above criteria. Posts with links or longer content are `risk_level: medium`.
+
+### LinkedIn Post Keywords
+
+Action items containing these keywords may trigger LinkedIn post generation:
+- `announce`, `share`, `post about`, `publish`, `broadcast`
+- `linkedin update`, `social media`, `professional network`
+- `thought leadership`, `industry insight`
+
+### Queue Behavior
+
+When posting limits or schedule are violated:
+- Posts are queued in `/Pending_Approval/` with status `queued`
+- Queue position and estimated post time are added to approval file
+- Queued posts execute automatically when limits reset (next day) or schedule resumes (next business hour)
+- `rate_limit_daily_exceeded` logged to audit when daily limit reached
+
+### Credential Expiration
+
+LinkedIn OAuth tokens expire after 60 days. When `AUTH_EXPIRED` error detected:
+1. Create notification in `/Needs_Action/` with refresh instructions
+2. Post remains in `/Approved/` for retry after credential refresh
+3. Dashboard shows LinkedIn MCP status as "❌ AUTH_EXPIRED"
+4. All queued posts are preserved until token is refreshed

@@ -1,356 +1,347 @@
-# Execute Approved Actions – Examples
+# Execute Approved Actions - Real Execution Examples
 
-These examples demonstrate how the `execute-approved-actions` Skill processes approved external actions via MCP servers in the Personal AI Employee system (Silver tier).
+This document provides real-world examples of executing approved actions via the execute-approved-actions skill.
 
 ---
 
-## Example 1: Executing Approved Email Send
+## Example 1: Email Send
 
-### Input: Approved Action File
+### Input: Approval Request File
 
-**File**: `/Approved/APPROVAL_email_proposal_newclient_2026-01-09.md`
+**File**: `/Pending_Approval/APPROVAL_email_client_2026-01-09.md`
 
 ```markdown
 ---
 type: approval_request
-action: send_email
-plan_id: /Plans/PLAN_proposal_request_2026-01-09.md
-source_action_item: /Done/EMAIL_20260109_67890.md
-created: 2026-01-09T14:35:00Z
-expires: 2026-01-10T14:35:00Z
+id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+action_type: email_send
+target: "client@example.com"
+risk_level: low
+rationale: "Client requested invoice via email"
+created_timestamp: 2026-01-09T10:30:00Z
 status: approved
-priority: high
-mcp_server: email
-mcp_tool: send_email
+approval_timestamp: 2026-01-09T10:35:00Z
+approver: "user"
+mcp_server: "email-mcp"
+mcp_tool: "send_email"
 ---
-
 ## Action Request
 
-**Action Type**: Send email reply with proposal attachment
-**Target**: newclient@startup.com
-**Subject**: Proposal for New Startup Inc. - Services
+**Action Type**: Send email reply
+**Reason**: Client requested invoice via email
+**Target**: client@example.com
 
 ## Parameters
 
-- To: newclient@startup.com
-- Subject: Proposal for New Startup Inc. - Services
-- Body: [Email body content]
-- Attachment: /Vault/Proposals/2026-01_NewStartupInc.pdf
+- **To**: client@example.com
+- **Subject**: Invoice #1234 - $1,500
+- **Body**: Please find attached your invoice for January 2026.
+- **Attachment**: /Vault/Invoices/2026-01_Client_A.pdf
 ```
 
-### Skill Execution
+### Execution Flow
 
-1. **Reads** approval file from `/Approved/`
-2. **Verifies** approval status and expiration (not expired)
-3. **Reads** `Company_Handbook.md` for MCP email server configuration
-4. **Verifies** MCP email server is available
-5. **Invokes** MCP tool: `email.send_email` with parameters
-6. **Captures** execution result (success with email ID)
-7. **Updates** approval file with execution metadata
-8. **Logs** to `/Logs/2026-01-09.json`
-9. **Updates** related plan file
-10. **Moves** approval file to `/Done/`
-11. **Updates** Dashboard.md
+1. **File Detected**: ApprovalOrchestrator detects file in `/Approved/` folder
+2. **Parse Approval**: Read approval file, extract parameters
+3. **MCP Invocation**: Call email-mcp `send_email` tool:
+   ```json
+   {
+     "to": "client@example.com",
+     "subject": "Invoice #1234 - $1,500",
+     "body": "Please find attached your invoice for January 2026.",
+     "attachments": ["/Vault/Invoices/2026-01_Client_A.pdf"]
+   }
+   ```
+4. **MCP Response**:
+   ```json
+   {
+     "status": "sent",
+     "message_id": "<1704801234.567@smtp.gmail.com>",
+     "timestamp": "2026-01-09T10:36:15.123456Z"
+   }
+   ```
+5. **Audit Log Entry** (auto-created):
+   ```json
+   {
+     "entry_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+     "timestamp": "2026-01-09T10:36:15.123456Z",
+     "action_type": "email_send",
+     "actor": "claude-code",
+     "target": "client@example.com",
+     "parameters": {
+       "subject": "Invoice #1234 - $1,500",
+       "body_preview": "Please find attached your invoice...",
+       "attachment_count": 1
+     },
+     "approval_status": "approved",
+     "approval_by": "user",
+     "approval_timestamp": "2026-01-09T10:35:00Z",
+     "mcp_server": "email-mcp",
+     "result": "success",
+     "error": null,
+     "execution_duration_ms": 1234,
+     "approval_request_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+   }
+   ```
+6. **File Movement**: File moved from `/Approved/` to `/Done/` with execution metadata appended
 
-### Output: Updated Approval File (in /Done/)
+### Output: Completed Approval File
+
+**File**: `/Done/APPROVAL_email_client_2026-01-09.md`
 
 ```markdown
 ---
 type: approval_request
-action: send_email
+id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+action_type: email_send
+target: "client@example.com"
 status: executed
-executed_at: 2026-01-09T15:30:00Z
-mcp_server: email
-mcp_tool: send_email
-execution_id: email_smtp_abc123
-result: success
+execution_timestamp: 2026-01-09T10:36:15.123456Z
+mcp_server: "email-mcp"
+execution_id: "<1704801234.567@smtp.gmail.com>"
+result: "success"
 ---
-
-[... original approval content ...]
-
 ## Execution Status
 
-- Status: executed
-- Executed at: 2026-01-09T15:30:00Z
-- MCP Server: email
-- Execution ID: email_smtp_abc123
-- Error: null
-```
-
-### Audit Log Entry
-
-**File**: `/Logs/2026-01-09.json`
-
-```json
-{
-  "date": "2026-01-09",
-  "actions": [
-    {
-      "timestamp": "2026-01-09T15:30:00Z",
-      "action_type": "send_email",
-      "actor": "claude_code",
-      "target": "newclient@startup.com",
-      "parameters": {
-        "subject": "Proposal for New Startup Inc. - Services",
-        "body_length": 450,
-        "has_attachment": true
-      },
-      "approval_status": "approved",
-      "approved_by": "human",
-      "approval_file": "APPROVAL_email_proposal_newclient_2026-01-09.md",
-      "mcp_server": "email",
-      "mcp_tool": "send_email",
-      "result": "success",
-      "execution_id": "email_smtp_abc123",
-      "error": null,
-      "plan_reference": "/Plans/PLAN_proposal_request_2026-01-09.md"
-    }
-  ]
-}
-```
-
-### Updated Plan File
-
-```markdown
-## Recommended Actions
-
-- [x] Identify client: New Startup Inc.
-- [x] Generate proposal document
-- [x] **APPROVED & EXECUTED**: Send email with proposal attachment
-  - Executed: 2026-01-09T15:30:00Z
-  - Email ID: email_smtp_abc123
-  - Status: Success
-- [ ] Follow up if no response by Thursday
+- **Status**: ✅ Executed successfully
+- **Executed at**: 2026-01-09T10:36:15Z
+- **MCP Server**: email-mcp
+- **Execution ID**: <1704801234.567@smtp.gmail.com>
+- **Duration**: 1234ms
+- **Audit Log Entry**: b2c3d4e5-f6a7-8901-bcde-f12345678901
 ```
 
 ---
 
-## Example 2: Executing LinkedIn Post via MCP
+## Example 2: LinkedIn Post
 
-### Input: Approved LinkedIn Post
+### Input: Approval Request File
 
-**File**: `/Approved/APPROVAL_linkedin_weekly_post_2026-01-09.md`
+**File**: `/Pending_Approval/APPROVAL_linkedin_announcement_2026-01-09.md`
 
 ```markdown
 ---
 type: approval_request
-action: post_linkedin
+id: "c3d4e5f6-a7b8-9012-cdef-123456789012"
+action_type: linkedin_post
+target: "LinkedIn"
+risk_level: medium
+rationale: "Announce new product feature"
+created_timestamp: 2026-01-09T14:00:00Z
 status: approved
-mcp_server: linkedin
-mcp_tool: create_post
+approval_timestamp: 2026-01-09T14:05:00Z
+approver: "user"
+mcp_server: "linkedin-mcp"
+mcp_tool: "create_post"
 ---
-
 ## Parameters
 
-- Content: "🚀 Excited to share our latest client success..."
-- Visibility: public
-- Hashtags: #BusinessGrowth #TechInnovation
+- **Content**: Excited to announce our new AI-powered automation feature! 🚀 This will help teams save hours every week. #AI #Automation #Innovation
+- **Visibility**: PUBLIC
 ```
 
-### Skill Execution
+### Execution Flow
 
-1. **Reads** approval file
-2. **Invokes** MCP LinkedIn server tool: `linkedin.create_post`
-3. **Result**: Success with post ID `linkedin_post_xyz789`
-4. **Updates** approval file
-5. **Logs** execution
-6. **Moves** to `/Done/`
-
-### Audit Log Entry
-
-```json
-{
-  "timestamp": "2026-01-09T16:00:00Z",
-  "action_type": "post_linkedin",
-  "actor": "claude_code",
-  "target": "linkedin_company_page",
-  "parameters": {
-    "content_length": 280,
-    "visibility": "public",
-    "hashtags": ["BusinessGrowth", "TechInnovation"]
-  },
-  "approval_status": "approved",
-  "mcp_server": "linkedin",
-  "mcp_tool": "create_post",
-  "result": "success",
-  "execution_id": "linkedin_post_xyz789",
-  "error": null
-}
-```
+1. **File Detected**: ApprovalOrchestrator detects file in `/Approved/`
+2. **LinkedIn Rules Check**: Verify posting limits and schedule (max 3/day, 9am-5pm)
+3. **MCP Invocation**: Call linkedin-mcp `create_post` tool:
+   ```json
+   {
+     "content": "Excited to announce our new AI-powered automation feature! 🚀 This will help teams save hours every week. #AI #Automation #Innovation",
+     "visibility": "PUBLIC"
+   }
+   ```
+4. **MCP Response**:
+   ```json
+   {
+     "status": "published",
+     "post_id": "urn:li:activity:1234567890",
+     "post_url": "https://www.linkedin.com/feed/update/1234567890",
+     "timestamp": "2026-01-09T14:06:30.789012Z"
+   }
+   ```
+5. **Audit Log Entry**:
+   ```json
+   {
+     "entry_id": "d4e5f6a7-b8c9-0123-def4-234567890123",
+     "timestamp": "2026-01-09T14:06:30.789012Z",
+     "action_type": "linkedin_post",
+     "actor": "claude-code",
+     "target": "LinkedIn",
+     "parameters": {
+       "content_preview": "Excited to announce our new AI-powered...",
+       "visibility": "PUBLIC",
+       "hashtags": ["#AI", "#Automation", "#Innovation"]
+     },
+     "approval_status": "approved",
+     "approval_by": "user",
+     "mcp_server": "linkedin-mcp",
+     "result": "success",
+     "execution_duration_ms": 2345,
+     "approval_request_id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+     "extra_fields": {
+       "post_id": "urn:li:activity:1234567890",
+       "post_url": "https://www.linkedin.com/feed/update/1234567890"
+     }
+   }
+   ```
+6. **File Movement**: File moved to `/Done/` with post URL
 
 ---
 
-## Example 3: Execution Failure Handling
+## Example 3: Browser Automation
 
-### Scenario
+### Input: Approval Request File
 
-MCP email server is unavailable (not running, connection error).
-
-### Skill Execution
-
-1. **Reads** approval file from `/Approved/`
-2. **Attempts** to verify MCP email server
-3. **Detects** server unavailable (connection error)
-4. **Handles error**:
-   - Logs error to audit log
-   - Updates approval file with error details
-   - Moves approval file to `/Rejected/` (not `/Done/`)
-   - Updates Dashboard with MCP server status
-   - Does NOT retry automatically
-
-### Output: Rejected Approval File (in /Rejected/)
+**File**: `/Pending_Approval/APPROVAL_browser_form_2026-01-09.md`
 
 ```markdown
 ---
 type: approval_request
-action: send_email
-status: failed
-error: mcp_server_unavailable
-mcp_server: email
+id: "e5f6a7b8-c9d0-1234-ef56-345678901234"
+action_type: browser_action
+target: "https://example.com/contact"
+risk_level: high
+rationale: "Submit contact form with business inquiry"
+mcp_server: "playwright-mcp"
+mcp_tool: "browser_action"
 ---
+## Parameters
 
-[... original content ...]
-
-## Execution Status
-
-- Status: failed
-- Error: MCP server 'email' unavailable
-- Error Details: Connection refused - server not running
-- Recommendation: Check MCP server configuration and restart server
+- **Action**: fill_form
+- **URL**: https://example.com/contact
+- **Form Fields**:
+  - name: "John Doe"
+  - email: "john@example.com"
+  - message: "Interested in your services"
+- **Take Screenshot**: true
 ```
 
-### Audit Log Entry
+### Execution Flow
 
-```json
-{
-  "timestamp": "2026-01-09T17:00:00Z",
-  "action_type": "send_email",
-  "target": "client@example.com",
-  "approval_status": "approved",
-  "mcp_server": "email",
-  "mcp_tool": "send_email",
-  "result": "failed",
-  "error": "MCP server 'email' unavailable: Connection refused",
-  "error_type": "mcp_server_unavailable"
-}
-```
+1. **File Detected**: ApprovalOrchestrator detects file
+2. **MCP Invocation**: Call playwright-mcp `browser_action` tool:
+   ```json
+   {
+     "action": "fill_form",
+     "url": "https://example.com/contact",
+     "form_fields": {
+       "name": "John Doe",
+       "email": "john@example.com",
+       "message": "Interested in your services"
+     },
+     "take_screenshot": true
+   }
+   ```
+3. **MCP Response**:
+   ```json
+   {
+     "status": "success",
+     "screenshot_path": "/Logs/screenshots/2026-01-09_14-30-45_contact-form.png",
+     "timestamp": "2026-01-09T14:30:45.123456Z"
+   }
+   ```
+4. **Audit Log Entry**: Logged with screenshot path
+5. **File Movement**: File moved to `/Done/` with screenshot reference
 
 ---
 
-## Example 4: Expired Approval Handling
+## Example 4: Error Handling - MCP Unavailable
 
-### Scenario
+### Scenario: Email MCP Server Not Running
 
-Approval file has expired (expires date in past).
+**Input**: Approval file in `/Approved/` for email send
 
-### Skill Execution
+**Execution Flow**:
+1. **Health Check**: ApprovalOrchestrator checks email-mcp health
+2. **Health Check Fails**: MCP server returns `status: error`
+3. **Error Handling**:
+   - Log error to audit log:
+     ```json
+     {
+       "action_type": "email_send",
+       "result": "failure",
+       "error": "MCP server unavailable: email-mcp",
+       "error_code": "MCP_SERVER_UNAVAILABLE"
+     }
+     ```
+   - Move file to `/Rejected/` (not `/Done/`)
+   - Create notification in `/Needs_Action/`:
+     ```markdown
+     # MCP Server Unavailable
+     
+     **Issue**: Email MCP server is not responding
+     **Action**: Check PM2 status, restart email-mcp server
+     **Approval File**: APPROVAL_email_client_2026-01-09.md (moved to /Rejected/)
+     ```
 
-1. **Reads** approval file
-2. **Checks** expiration date: `expires: 2026-01-08T14:35:00Z`
-3. **Current time**: `2026-01-09T15:00:00Z` (expired)
-4. **Handles expired**:
-   - Logs expiration notice
-   - Moves file to `/Rejected/` (not `/Done/`)
-   - Does NOT execute (security requirement)
-   - Updates Dashboard with expiration notice
+---
 
-### Output: Rejected Expired File
+## Example 5: Error Handling - Expired Approval
+
+### Scenario: Approval Request Expired (>24 hours)
+
+**Input**: Approval file in `/Approved/` created 25 hours ago
+
+**Execution Flow**:
+1. **Expiration Check**: ApprovalOrchestrator checks `created_timestamp`
+2. **Expired Detected**: Age = 25 hours > 24 hour limit
+3. **Error Handling**:
+   - Log expiration to audit log:
+     ```json
+     {
+       "action_type": "email_send",
+       "result": "failure",
+       "error": "Approval request expired (>24 hours)",
+       "error_code": "EXPIRED"
+     }
+     ```
+   - Move file to `/Rejected/` (not executed)
+   - Do NOT execute expired approvals (security)
+
+---
+
+## Example 6: Error Handling - Malformed Approval File
+
+### Scenario: Approval File Missing Required Fields
+
+**Input**: Malformed approval file in `/Approved/`
 
 ```markdown
 ---
 type: approval_request
-action: send_email
-status: expired
-expired_at: 2026-01-09T15:00:00Z
-original_expires: 2026-01-08T14:35:00Z
+# Missing: action_type, target, parameters, mcp_server
 ---
-
-## Execution Status
-
-- Status: expired
-- Original expiration: 2026-01-08T14:35:00Z
-- Detected expired: 2026-01-09T15:00:00Z
-- Action: NOT EXECUTED (expired approvals are not executed for security)
-- Recommendation: Review original action item and create new approval if needed
 ```
 
----
-
-## Example 5: Dry Run Mode
-
-### Scenario
-
-System is in `DRY_RUN=true` mode.
-
-### Skill Execution
-
-1. **Reads** approval file
-2. **Checks** environment: `DRY_RUN=true`
-3. **Handles dry-run**:
-   - Logs intended action (does not execute)
-   - Updates approval file with dry-run note
-   - Marks as "dry_run" in audit log
-   - Moves to `/Done/` with dry-run status
-
-### Audit Log Entry (Dry Run)
-
-```json
-{
-  "timestamp": "2026-01-09T18:00:00Z",
-  "action_type": "send_email",
-  "target": "test@example.com",
-  "approval_status": "approved",
-  "mcp_server": "email",
-  "result": "dry_run",
-  "dry_run_note": "DRY_RUN=true - action logged but not executed"
-}
-```
+**Execution Flow**:
+1. **Parse Attempt**: ApprovalOrchestrator tries to parse file
+2. **Validation Fails**: Missing required fields
+3. **Error Handling**:
+   - Log validation error to audit log:
+     ```json
+     {
+       "action_type": "unknown",
+       "result": "failure",
+       "error": "Missing required fields: action_type, target, mcp_server",
+       "error_code": "PARAMETER_VALIDATION_FAILED"
+     }
+     ```
+   - Move file to `/Rejected/` with error details appended
+   - Create notification in `/Needs_Action/` for manual review
 
 ---
 
-## Example 6: Multiple Approved Actions
+## Best Practices
 
-### Scenario
-
-Multiple approval files in `/Approved/` folder.
-
-### Skill Execution
-
-1. **Scans** `/Approved/` folder
-2. **Finds** 3 approval files:
-   - `APPROVAL_email_1.md` (high priority, not expired)
-   - `APPROVAL_linkedin_1.md` (medium priority, not expired)
-   - `APPROVAL_email_2.md` (low priority, not expired)
-3. **Sorts** by priority (high → medium → low)
-4. **Processes** each in priority order:
-   - Execute high priority email
-   - Execute medium priority LinkedIn post
-   - Execute low priority email
-5. **Updates** Dashboard with all 3 executions
-6. **Logs** all 3 to audit log
-
-### Output: Dashboard Update
-
-```markdown
-## Recent MCP Activity
-
-- [2026-01-09 18:00] Executed: Email to client@example.com (high priority)
-- [2026-01-09 18:01] Executed: LinkedIn post (medium priority)
-- [2026-01-09 18:02] Executed: Email to vendor@example.com (low priority)
-
-## MCP Server Status
-
-- Email server: ✅ Available (3 executions today)
-- LinkedIn server: ✅ Available (1 execution today)
-```
+1. **Always Log Before Moving**: Audit logging must succeed before moving files
+2. **Handle Errors Gracefully**: Never crash orchestrator on MCP errors
+3. **Preserve Approval Files**: Keep original approval content in `/Done/` or `/Rejected/`
+4. **Update Related Plans**: Mark checkboxes in related plan files after execution
+5. **Verify MCP Health**: Check MCP server availability before execution
+6. **Respect Rate Limits**: Queue actions when rate limits exceeded
+7. **Sanitize Credentials**: All parameters automatically sanitized before logging
 
 ---
 
-These examples demonstrate:
-- Successful execution via MCP servers
-- Error handling (server unavailable, expired approvals)
-- Dry-run mode support
-- Multiple action processing
-- Complete audit trail for all executions
-- Proper file management (Done vs Rejected)
-
+**For more details**: See `.claude/skills/execute-approved-actions/SKILL.md`
