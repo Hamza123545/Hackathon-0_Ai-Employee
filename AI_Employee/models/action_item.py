@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 
 SourceType = Literal['gmail', 'file', 'whatsapp', 'linkedin']
@@ -199,3 +199,115 @@ def create_action_file(
     except OSError as e:
         print(f"Error creating action file: {e}")
         return None
+
+
+def parse_action_file(file_path: Path) -> ActionItem:
+    """
+    Parse an action item file and return an ActionItem object.
+
+    Args:
+        file_path: Path to the action item markdown file.
+
+    Returns:
+        Parsed ActionItem object.
+
+    Raises:
+        OSError: If file cannot be read.
+        ValueError: If file format is invalid.
+    """
+    content = file_path.read_text(encoding='utf-8')
+
+    # Extract frontmatter
+    frontmatter_match = re.match(
+        r'^---\s*\n(.*?)\n---',
+        content,
+        re.DOTALL
+    )
+    if not frontmatter_match:
+        raise ValueError(f"Invalid action item format: missing frontmatter in {file_path.name}")
+
+    frontmatter_text = frontmatter_match.group(1)
+    body_text = content[frontmatter_match.end():].strip()
+
+    # Parse frontmatter (simple YAML-like parsing)
+    metadata: dict[str, Any] = {}
+    for line in frontmatter_text.split('\n'):
+        line = line.strip()
+        if ':' in line:
+            key, value = line.split(':', 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            
+            # Parse special types
+            if key == 'created':
+                try:
+                    metadata[key] = datetime.fromisoformat(value)
+                except ValueError:
+                    metadata[key] = datetime.now()
+            elif key == 'tags':
+                # Parse tags array: [tag1, tag2] or ["tag1", "tag2"]
+                tags = re.findall(r'"([^"]+)"', value) or re.findall(r"'([^']+)'", value)
+                if not tags:
+                    # Try without quotes
+                    tags = [t.strip() for t in value.strip('[]').split(',') if t.strip()]
+                metadata[key] = tags
+            else:
+                metadata[key] = value
+
+    # Extract body content
+    summary = ''
+    from_address = ''
+    original_date = ''
+    content_type = ''
+    content = ''
+    watcher_type = ''
+
+    # Parse body sections
+    if '## Summary' in body_text:
+        summary_match = re.search(r'## Summary\s*\n(.*?)(?=\n##|\Z)', body_text, re.DOTALL)
+        if summary_match:
+            summary = summary_match.group(1).strip()
+
+    if '## Details' in body_text:
+        details_match = re.search(r'## Details\s*\n(.*?)(?=\n##|\Z)', body_text, re.DOTALL)
+        if details_match:
+            details = details_match.group(1)
+            from_match = re.search(r'\*\*From\*\*:\s*(.+)', details)
+            if from_match:
+                from_address = from_match.group(1).strip()
+            date_match = re.search(r'\*\*Date\*\*:\s*(.+)', details)
+            if date_match:
+                original_date = date_match.group(1).strip()
+            type_match = re.search(r'\*\*Type\*\*:\s*(.+)', details)
+            if type_match:
+                content_type = type_match.group(1).strip()
+
+    if '## Content' in body_text:
+        content_match = re.search(r'## Content\s*\n(.*?)(?=\n##|\Z)', body_text, re.DOTALL)
+        if content_match:
+            content = content_match.group(1).strip()
+
+    if '## Metadata' in body_text:
+        metadata_section = re.search(r'## Metadata\s*\n(.*?)(?=\n##|\Z)', body_text, re.DOTALL)
+        if metadata_section:
+            metadata_text = metadata_section.group(1)
+            watcher_match = re.search(r'\*\*Detected by\*\*:\s*(.+)', metadata_text)
+            if watcher_match:
+                watcher_type = watcher_match.group(1).strip()
+
+    # Create ActionItem
+    return ActionItem(
+        id=metadata.get('id', file_path.stem),
+        source=metadata.get('source', 'file'),  # type: ignore
+        title=metadata.get('title', file_path.stem),
+        created=metadata.get('created', datetime.now()),
+        priority=metadata.get('priority', 'unknown'),  # type: ignore
+        status=metadata.get('status', 'pending'),  # type: ignore
+        tags=metadata.get('tags', []),
+        summary=summary,
+        from_address=from_address,
+        original_date=original_date,
+        content_type=content_type,
+        content=content,
+        watcher_type=watcher_type
+    )

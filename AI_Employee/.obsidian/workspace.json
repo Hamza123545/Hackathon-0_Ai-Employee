@@ -178,6 +178,10 @@
   },
   "active": "8e4aace0a42c3d31",
   "lastOpenFiles": [
+    "AUTOMATION_SUMMARY.md",
+    "AI_PROCESSOR_README.md",
+    "run_ai_processor.py",
+    "ai_process_items.py",
     "Dashboard.md",
     "CONSTITUTIONAL_COMPLIANCE.md",
     "demo_silver_tier.md",
@@ -199,8 +203,6 @@
     "tests/test_sanitizer.py",
     "tests/__init__.py",
     "tests",
-    "test_pm2_crash_recovery.py",
-    "run_orchestrator.py",
     "INSTALL.md",
     "SILVER_TIER_SETUP.md",
     "Plans/plan-budget-review-20260109-172031.md",
@@ -211,8 +213,6 @@
     "README.md",
     "Done/action-file-auto-test-urgent-requesttxt-20260109-170000.md",
     "Needs_Action/action-file-auto-test-urgent-requesttxt-20260109-170000.md",
-    "Needs_Action/action-file-auto-test-urgent-requesttxt-20260109-165956.md",
-    "Plans/plan-e2e-test-verification-20260109-163245.md",
-    "Needs_Action/action-file-duplicate-testtxt-20260109-163546.md"
+    "Needs_Action/action-file-auto-test-urgent-requesttxt-20260109-165956.md"
   ]
 }

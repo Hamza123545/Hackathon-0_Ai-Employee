@@ -134,6 +134,49 @@ module.exports = {
     },
 
     // ============================================
+    // AI PROCESSOR (Automatic action item processing)
+    // ============================================
+    {
+      name: 'ai-processor',
+      script: './run_ai_processor.py',
+      interpreter: 'python',
+      cwd: './AI_Employee',
+      exec_mode: 'fork',
+
+      // Restart behavior
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '10s',
+      restart_delay: 5000,
+
+      // Watch mode disabled (processor polls /Needs_Action folder)
+      watch: false,
+
+      // Environment variables
+      env: {
+        PROCESS_INTERVAL: '60',  // 1 minute
+        PROCESS_METHOD: 'auto',  // auto, claude-cli, anthropic, simulation
+        PYTHONUNBUFFERED: '1',
+        LOG_LEVEL: 'INFO',
+        VAULT_PATH: process.env.VAULT_PATH || require('path').resolve(__dirname),
+        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || '',
+        CLAUDE_CLI_PATH: process.env.CLAUDE_CLI_PATH || 'claude'
+      },
+
+      // Logging
+      error_file: './logs/ai-processor-err.log',
+      out_file: './logs/ai-processor-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      merge_logs: true,
+
+      // Memory management
+      max_memory_restart: '500M',
+
+      // Cron restart every 12 hours for cleanup
+      cron_restart: '0 */12 * * *'
+    },
+
+    // ============================================
     // APPROVAL ORCHESTRATOR (HITL workflow)
     // ============================================
     {

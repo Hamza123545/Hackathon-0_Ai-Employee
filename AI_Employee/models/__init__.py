@@ -18,7 +18,7 @@ Silver Tier Models:
 - WatcherHealth: Watcher health metrics
 """
 
-from .action_item import ActionItem, create_action_file
+from .action_item import ActionItem, create_action_file, parse_action_file
 from .processed_tracker import ProcessedTracker
 from .approval_request import (
     ApprovalRequest,

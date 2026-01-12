@@ -1,0 +1,295 @@
+{
+  "server_name": "xero-mcp",
+  "protocol": "stdio",
+  "version": "1.0.0",
+  "description": "MCP server for Xero accounting integration - invoices, expenses, bank transactions, financial reports",
+  "authentication": {
+    "type": "oauth2",
+    "flow": "authorization_code",
+    "authorization_url": "https://login.xero.com/identity/connect/authorize",
+    "token_url": "https://identity.xero.com/connect/token",
+    "scopes": [
+      "accounting.transactions",
+      "accounting.reports.read",
+      "accounting.contacts",
+      "accounting.settings"
+    ],
+    "token_storage": "os_credential_manager",
+    "refresh_token_enabled": true
+  },
+  "rate_limits": {
+    "requests_per_minute": 60,
+    "burst_limit": 100,
+    "daily_limit": 5000,
+    "retry_strategy": "exponential_backoff",
+    "backoff_delays": [1, 2, 4]
+  },
+  "tools": [
+    {
+      "name": "get_invoices",
+      "description": "Retrieve invoices from Xero with optional filtering by status, date range, contact",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "SUBMITTED", "AUTHORISED", "PAID"],
+            "description": "Filter by invoice status"
+          },
+          "date_from": {
+            "type": "string",
+            "format": "date",
+            "description": "Retrieve invoices from this date (YYYY-MM-DD)"
+          },
+          "date_to": {
+            "type": "string",
+            "format": "date",
+            "description": "Retrieve invoices up to this date (YYYY-MM-DD)"
+          },
+          "contact_ids": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Filter by contact IDs"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1,
+            "description": "Page number for pagination"
+          }
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "invoices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "invoice_id": {"type": "string"},
+                "invoice_number": {"type": "string"},
+                "contact": {"type": "string"},
+                "date": {"type": "string", "format": "date"},
+                "due_date": {"type": "string", "format": "date"},
+                "total": {"type": "number"},
+                "amount_due": {"type": "number"},
+                "currency": {"type": "string"},
+                "status": {"type": "string"}
+              }
+            }
+          },
+          "total_count": {"type": "integer"},
+          "page": {"type": "integer"}
+        }
+      },
+      "requires_approval": false,
+      "errors": [
+        {"code": "AUTH_ERROR", "message": "Invalid or expired OAuth token", "retry": true},
+        {"code": "RATE_LIMIT", "message": "API rate limit exceeded (60/min)", "retry": true, "wait": 60},
+        {"code": "NOT_FOUND", "message": "Organization or invoice not found", "retry": false},
+        {"code": "INVALID_PARAMS", "message": "Invalid filter parameters", "retry": false}
+      ]
+    },
+    {
+      "name": "create_expense",
+      "description": "Create an expense entry in Xero (requires approval via HITL workflow)",
+      "parameters": {
+        "type": "object",
+        "required": ["amount", "date", "description", "category"],
+        "properties": {
+          "amount": {
+            "type": "number",
+            "minimum": 0.01,
+            "description": "Expense amount (must be positive)"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Expense date (YYYY-MM-DD)"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Expense description"
+          },
+          "category": {
+            "type": "string",
+            "description": "Expense category/account code"
+          },
+          "currency": {
+            "type": "string",
+            "default": "USD",
+            "description": "Currency code (ISO 4217)"
+          },
+          "receipt_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Optional receipt attachment URL"
+          }
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "expense_id": {"type": "string"},
+          "status": {"type": "string"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "approval_request_id": {"type": "string"}
+        }
+      },
+      "requires_approval": true,
+      "approval_workflow": "Creates approval request in /Pending_Approval/, requires human to move to /Approved/ before execution"
+    },
+    {
+      "name": "create_invoice",
+      "description": "Create a new invoice in Xero (requires approval via HITL workflow)",
+      "parameters": {
+        "type": "object",
+        "required": ["contact_name", "line_items", "due_date"],
+        "properties": {
+          "contact_name": {
+            "type": "string",
+            "description": "Customer/contact name"
+          },
+          "line_items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["description", "quantity", "unit_amount"],
+              "properties": {
+                "description": {"type": "string"},
+                "quantity": {"type": "number", "minimum": 1},
+                "unit_amount": {"type": "number", "minimum": 0},
+                "account_code": {"type": "string"}
+              }
+            }
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Invoice due date (YYYY-MM-DD)"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Optional reference/PO number"
+          },
+          "currency": {
+            "type": "string",
+            "default": "USD"
+          }
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "invoice_id": {"type": "string"},
+          "invoice_number": {"type": "string"},
+          "status": {"type": "string"},
+          "total": {"type": "number"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "approval_request_id": {"type": "string"}
+        }
+      },
+      "requires_approval": true,
+      "approval_workflow": "Creates approval request in /Pending_Approval/, requires human approval before invoice creation"
+    },
+    {
+      "name": "get_financial_report",
+      "description": "Generate financial report (Profit & Loss, Balance Sheet, Bank Summary) for specified period",
+      "parameters": {
+        "type": "object",
+        "required": ["report_type", "from_date", "to_date"],
+        "properties": {
+          "report_type": {
+            "type": "string",
+            "enum": ["profit_and_loss", "balance_sheet", "bank_summary"],
+            "description": "Type of financial report to generate"
+          },
+          "from_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Report start date (YYYY-MM-DD)"
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Report end date (YYYY-MM-DD)"
+          }
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "report_type": {"type": "string"},
+          "period": {"type": "string"},
+          "revenue": {"type": "number"},
+          "expenses": {"type": "number"},
+          "net_profit": {"type": "number"},
+          "generated_at": {"type": "string", "format": "date-time"},
+          "details": {"type": "object"}
+        }
+      },
+      "requires_approval": false,
+      "usage": "Used by weekly audit generator to retrieve financial summary"
+    },
+    {
+      "name": "sync_bank_transactions",
+      "description": "Sync bank transactions from Xero for specified period and bank account",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "from_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Sync transactions from this date"
+          },
+          "to_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Sync transactions up to this date"
+          },
+          "bank_account_id": {
+            "type": "string",
+            "description": "Filter by specific bank account"
+          }
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "transaction_count": {"type": "integer"},
+          "transactions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "transaction_id": {"type": "string"},
+                "type": {"type": "string"},
+                "date": {"type": "string", "format": "date"},
+                "amount": {"type": "number"},
+                "description": {"type": "string"},
+                "status": {"type": "string"}
+              }
+            }
+          },
+          "synced_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "requires_approval": false,
+      "sync_frequency": "Every 6 hours via scheduled task"
+    }
+  ],
+  "health_check": {
+    "endpoint": "/health",
+    "method": "GET",
+    "expected_response": {"status": "healthy", "connected": true}
+  },
+  "logging": {
+    "log_file": "/Logs/xero_mcp.log",
+    "log_level": "INFO",
+    "sanitize_credentials": true,
+    "log_all_requests": true
+  }
+}
