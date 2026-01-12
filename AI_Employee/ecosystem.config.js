@@ -138,7 +138,7 @@ module.exports = {
     // ============================================
     {
       name: 'ai-processor',
-      script: './run_ai_processor.py',
+      script: './ai_process_items.py',
       interpreter: 'python',
       cwd: './AI_Employee',
       exec_mode: 'fork',
@@ -149,18 +149,19 @@ module.exports = {
       min_uptime: '10s',
       restart_delay: 5000,
 
-      // Watch mode disabled (processor polls /Needs_Action folder)
+      // Watch mode disabled (processor uses watchdog internally)
       watch: false,
 
       // Environment variables
       env: {
-        PROCESS_INTERVAL: '60',  // 1 minute
-        PROCESS_METHOD: 'auto',  // auto, claude-cli, anthropic, simulation
+        AI_PROCESSOR_ENABLED: 'true',
+        PROCESSING_INTERVAL: '30',  // 30 seconds (Gold Tier requirement)
+        AUTO_PROCESS_PERSONAL: 'true',
+        AUTO_PROCESS_BUSINESS: 'true',
         PYTHONUNBUFFERED: '1',
         LOG_LEVEL: 'INFO',
-        VAULT_PATH: process.env.VAULT_PATH || require('path').resolve(__dirname),
-        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || '',
-        CLAUDE_CLI_PATH: process.env.CLAUDE_CLI_PATH || 'claude'
+        VAULT_PATH: process.env.VAULT_PATH || require('path').resolve(__dirname, 'AI_Employee'),
+        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || ''
       },
 
       // Logging
@@ -170,10 +171,7 @@ module.exports = {
       merge_logs: true,
 
       // Memory management
-      max_memory_restart: '500M',
-
-      // Cron restart every 12 hours for cleanup
-      cron_restart: '0 */12 * * *'
+      max_memory_restart: '500M'
     },
 
     // ============================================
@@ -214,6 +212,148 @@ module.exports = {
 
       // Cron restart every 12 hours for cleanup
       cron_restart: '0 */12 * * *'
+    },
+
+    // ============================================
+    // WEEKLY AUDIT SCHEDULER (Gold Tier)
+    // ============================================
+    {
+      name: 'weekly-audit',
+      script: './schedulers/run_weekly_audit.py',
+      args: '--phase audit',
+      interpreter: 'python',
+      cwd: './AI_Employee',
+      exec_mode: 'fork',
+
+      // Run every Monday at 9:00 AM
+      cron_restart: '0 9 * * 1',
+
+      // Restart behavior
+      autorestart: false,  // Don't auto-restart after completion
+      max_restarts: 1,
+      min_uptime: '5s',
+
+      // Environment variables
+      env: {
+        PYTHONUNBUFFERED: '1',
+        LOG_LEVEL: 'INFO',
+        VAULT_PATH: process.env.VAULT_PATH || require('path').resolve(__dirname)
+      },
+
+      // Logging
+      error_file: './logs/weekly-audit-err.log',
+      out_file: './logs/weekly-audit-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      merge_logs: true,
+
+      // Memory management
+      max_memory_restart: '500M'
+    },
+
+    {
+      name: 'weekly-ceo-briefing',
+      script: './schedulers/run_weekly_audit.py',
+      args: '--phase briefing',
+      interpreter: 'python',
+      cwd: './AI_Employee',
+      exec_mode: 'fork',
+
+      // Run every Monday at 10:00 AM (1 hour after audit)
+      cron_restart: '0 10 * * 1',
+
+      // Restart behavior
+      autorestart: false,  // Don't auto-restart after completion
+      max_restarts: 1,
+      min_uptime: '5s',
+
+      // Environment variables
+      env: {
+        PYTHONUNBUFFERED: '1',
+        LOG_LEVEL: 'INFO',
+        VAULT_PATH: process.env.VAULT_PATH || require('path').resolve(__dirname)
+      },
+
+      // Logging
+      error_file: './logs/weekly-briefing-err.log',
+      out_file: './logs/weekly-briefing-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      merge_logs: true,
+
+      // Memory management
+      max_memory_restart: '500M'
+    },
+
+    // ============================================
+    // AI PROCESSOR DAEMON (Gold Tier - Phase 8)
+    // ============================================
+    {
+      name: 'ai-processor',
+      script: './ai_process_items.py',
+      interpreter: 'python',
+      cwd: './AI_Employee',
+      exec_mode: 'fork',
+
+      // Auto-restart configuration (T089)
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '10s',
+      restart_delay: 10000,
+
+      // Environment variables
+      env: {
+        PYTHONUNBUFFERED: '1',
+        LOG_LEVEL: 'INFO',
+        PROCESSING_INTERVAL: '30',  // 30 seconds
+        VAULT_PATH: process.env.VAULT_PATH || require('path').resolve(__dirname)
+      },
+
+      // Logging
+      error_file: './logs/ai-processor-err.log',
+      out_file: './logs/ai-processor-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      merge_logs: true,
+
+      // Memory management
+      max_memory_restart: '500M',
+
+      // Watch disabled
+      watch: false
+    },
+
+    // ============================================
+    // MCP HEALTH CHECKER (Gold Tier - Phase 8)
+    // ============================================
+    {
+      name: 'mcp-health-checker',
+      script: './scripts/check_mcp_health.py',
+      interpreter: 'python',
+      cwd: './AI_Employee',
+      exec_mode: 'fork',
+
+      // Auto-restart configuration
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '10s',
+      restart_delay: 10000,
+
+      // Environment variables
+      env: {
+        PYTHONUNBUFFERED: '1',
+        LOG_LEVEL: 'INFO',
+        VAULT_PATH: process.env.VAULT_PATH || require('path').resolve(__dirname)
+      },
+
+      // Logging
+      error_file: './logs/mcp-health-err.log',
+      out_file: './logs/mcp-health-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      merge_logs: true,
+
+      // Memory management
+      max_memory_restart: '200M',
+
+      // Watch disabled
+      watch: false
     }
   ]
 };

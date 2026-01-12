@@ -1,0 +1,416 @@
+# Personal AI Employee - Git Ignore
+
+# ============================================================================
+# Environment and Secrets
+# ============================================================================
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# OAuth tokens and credentials
+tokens/
+credentials/
+*.token
+*.credentials
+
+# OS credential manager files
+.keyring/
+
+# ============================================================================
+# Python
+# ============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# ============================================================================
+# Node.js / PM2
+# ============================================================================
+
+# PM2 logs and runtime
+.pm2/
+pm2.log
+pm2-*.log
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# npm logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# ============================================================================
+# Gold Tier - Sensitive Business Data
+# ============================================================================
+
+# Business domain sensitive files
+AI_Employee/Business/Goals/*.json
+AI_Employee/Business/Metrics/*.json
+AI_Employee/Business/Social_Media/**/*.json
+
+# Accounting data (Xero transactions)
+AI_Employee/Accounting/Transactions/*.json
+AI_Employee/Accounting/Summaries/*.json
+AI_Employee/Accounting/Audits/*.json
+
+# CEO briefings (may contain sensitive insights)
+AI_Employee/Briefings/*.md
+
+# System internals
+AI_Employee/System/MCP_Status/*.json
+AI_Employee/System/Failed_Requests/*.json
+
+# ============================================================================
+# Silver Tier - Approval Requests and Logs
+# ============================================================================
+
+# Approval requests (may contain sensitive actions)
+AI_Employee/Pending_Approval/*.json
+AI_Employee/Approved/*.json
+
+# Audit logs (contain credentials and sensitive data)
+AI_Employee/Logs/*.json
+AI_Employee/Logs/*.log
+
+# ============================================================================
+# Bronze Tier - Generated Files
+# ============================================================================
+
+# Generated action items (may contain personal data)
+AI_Employee/Needs_Action/*.md
+
+# Generated plans (may contain sensitive strategies)
+AI_Employee/Plans/*.md
+
+# Archived completed actions
+AI_Employee/Done/*.md
+
+# ============================================================================
+# IDE and Editor Files
+# ============================================================================
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ============================================================================
+# OS Files
+# ============================================================================
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ============================================================================
+# Temporary and Cache Files
+# ============================================================================
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Cache
+.cache/
+cache/
+
+# ============================================================================
+# Test and Development Files
+# ============================================================================
+
+# Test outputs
+test_output/
+test_results/
+.test/
+
+# Sandbox
+sandbox/
+playground/
+
+# ============================================================================
+# Documentation Build Files
+# ============================================================================
+
+# Sphinx
+docs/_build/
+docs/_static/
+docs/_templates/
+
+# MkDocs
+site/
+
+# ============================================================================
+# Miscellaneous
+# ============================================================================
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# Large files
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+*.mkv
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+
+# Logs
+logs/
+*.log
+
+# ============================================================================
+# Keep Important Files
+# ============================================================================
+
+# Keep example configurations
+!.env.example
+!config.example.json
+
+# Keep README and documentation
+!README*.md
+!CONTRIBUTING.md
+!LICENSE
+
+# Keep Company Handbook (Bronze tier rule file)
+!AI_Employee/Company_Handbook.md
+
+# Keep Dashboard (system status)
+!AI_Employee/Dashboard.md
+
+# Keep directory structure (keep .gitkeep files)
+!**/.gitkeep

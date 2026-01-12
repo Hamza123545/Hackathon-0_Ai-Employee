@@ -1,0 +1,102 @@
+# Personal AI Employee - Requirements
+# Bronze, Silver, and Gold Tier Dependencies
+
+# ============================================================================
+# Core Dependencies (All Tiers)
+# ============================================================================
+
+# Data validation and models
+pydantic==2.5.3
+pydantic[email]==2.5.3
+
+# FastMCP framework for MCP servers (Silver + Gold)
+fastmcp==1.0.0
+
+# OAuth and HTTP
+requests==2.31.0
+oauthlib==3.2.2
+
+# Environment variables
+python-dotenv==1.0.1
+
+# ============================================================================
+# Silver Tier Dependencies
+# ============================================================================
+
+# Gmail integration
+google-auth==2.27.0
+google-auth-oauthlib==1.2.0
+google-auth-httplib2==0.2.0
+google-api-python-client==2.116.0
+
+# WhatsApp integration (via Twilio or official API)
+twilio==8.12.0
+
+# LinkedIn integration
+linkedin-api==2.2.0
+
+# Browser automation
+playwright==1.41.0
+selenium==4.17.2
+
+# Credential storage
+keyring==24.3.0
+keyrings.alt==5.0.1
+
+# ============================================================================
+# Gold Tier Dependencies (NEW)
+# ============================================================================
+
+# Xero accounting integration
+xero-python==2.6.0
+
+# Facebook and Instagram integration
+python-facebook==2.2.0
+facebook-sdk==3.1.0
+
+# Twitter/X integration
+tweepy==4.14.0
+
+# File system monitoring for AI Processor
+watchdog==3.0.0
+
+# Task scheduling for weekly audits
+schedule==1.2.0
+
+# AI integration for insights generation
+anthropic==0.18.0
+
+# ============================================================================
+# Utility Dependencies (All Tiers)
+# ============================================================================
+
+# Date and time handling
+python-dateutil==2.8.2
+pytz==2024.1
+
+# JSON and YAML processing
+pyyaml==6.0.1
+
+# Logging and monitoring
+colorama==0.4.6
+
+# ============================================================================
+# Development Dependencies (Optional)
+# ============================================================================
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+
+# Code quality
+black==24.1.1
+flake8==7.0.0
+mypy==1.8.0
+pylint==3.0.3
+
+# Type stubs
+types-requests==2.31.0.20240106
+types-python-dateutil==2.8.19.20240106
+types-PyYAML==6.0.12.12
