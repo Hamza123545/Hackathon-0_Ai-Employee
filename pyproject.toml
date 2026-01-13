@@ -1,0 +1,110 @@
+[project]
+name = "personal-ai-employee"
+version = "1.0.0"
+description = "Gold Tier Personal AI Employee - Autonomous Processing with Cross-Domain Integration"
+requires-python = ">=3.10"
+dependencies = [
+    # Core Dependencies
+    "pydantic>=2.5.3",
+    "pydantic[email]>=2.5.3",
+    "fastmcp>=1.0.0",
+    "requests>=2.31.0",
+    "oauthlib>=3.2.2",
+    "python-dotenv>=1.0.1",
+
+    # Silver Tier - Gmail integration
+    "google-auth>=2.27.0",
+    "google-auth-oauthlib>=1.2.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-api-python-client>=2.116.0",
+
+    # Silver Tier - WhatsApp integration
+    "selenium>=4.16.0",
+    "webdriver-manager>=4.0.1",
+
+    # Silver Tier - LinkedIn integration
+    "linkedin-api>=2.2.0",
+
+    # Silver Tier - Browser automation
+    "playwright>=1.40.0",
+
+    # Silver Tier - Process management
+    "psutil>=5.9.6",
+
+    # Gold Tier - Xero accounting
+    "xero-python>=9.0.0",
+
+    # Gold Tier - Facebook and Instagram
+    "facebook-sdk>=3.1.0",
+
+    # Gold Tier - Twitter/X
+    "tweepy>=4.14.0",
+
+    # Gold Tier - File system monitoring
+    "watchdog>=3.0.0",
+
+    # Gold Tier - Task scheduling
+    "schedule>=1.2.0",
+
+    # Gold Tier - AI integration
+    "anthropic>=0.18.0",
+
+    # Utilities
+    "python-dateutil>=2.8.2",
+    "pytz>=2024.1",
+    "pyyaml>=6.0.1",
+    "keyring>=24.3.0",
+    "colorama>=0.4.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.3",
+    "pytest-asyncio>=0.23.2",
+    "pytest-cov>=4.1.0",
+    "black>=23.12.0",
+    "flake8>=6.1.0",
+    "mypy>=1.7.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["AI_Employee"]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.4.3",
+    "pytest-asyncio>=0.23.2",
+    "pytest-cov>=4.1.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["AI_Employee/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  | \.git
+  | \.venv
+  | venv
+  | build
+  | dist
+)/
+'''
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true

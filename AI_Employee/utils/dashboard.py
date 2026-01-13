@@ -14,11 +14,13 @@ Silver tier adds:
 import json
 import re
 import subprocess
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 from .config import Config
+from .classifier import Classifier, default_classifier
+from .health_checker import get_default_health_checker
 
 
 StatusType = Literal['running', 'stopped', 'error']
@@ -45,6 +47,7 @@ class DashboardUpdater:
         """
         self.config = config
         self.dashboard_path = config.dashboard_path
+        self.classifier = default_classifier
 
     def update_watcher_status(
         self,
@@ -249,6 +252,226 @@ class DashboardUpdater:
             'processed_today': processed_today,
             'active_plans': active_plans
         }
+    
+    def get_domain_stats(self) -> dict:
+        """
+        Get statistics by domain (Personal vs Business) for Gold Tier (T081).
+        
+        Returns:
+            Dict with personal and business domain statistics
+        """
+        from models.action_item import parse_action_file
+        
+        personal_count = 0
+        business_count = 0
+        accounting_count = 0
+        social_media_count = 0
+        
+        # Count pending items by domain
+        needs_action = self.config.needs_action_path
+        if needs_action.exists():
+            for file in needs_action.glob('*.md'):
+                try:
+                    action_item = parse_action_file(file)
+                    domain = self.classifier.classify(
+                        title=action_item.title,
+                        content=action_item.summary or action_item.content,
+                        source=action_item.source
+                    )
+                    if domain == 'personal':
+                        personal_count += 1
+                    elif domain == 'business':
+                        business_count += 1
+                    elif domain == 'accounting':
+                        accounting_count += 1
+                    elif domain == 'social_media':
+                        social_media_count += 1
+                except Exception:
+                    # If parsing fails, count as personal (default)
+                    personal_count += 1
+        
+        # Count processed items today by domain
+        today = datetime.now().date()
+        personal_processed = 0
+        business_processed = 0
+        
+        done_path = self.config.done_path
+        if done_path.exists():
+            for file in done_path.glob('*.md'):
+                try:
+                    mtime = datetime.fromtimestamp(file.stat().st_mtime).date()
+                    if mtime == today:
+                        action_item = parse_action_file(file)
+                        domain = self.classifier.classify(
+                            title=action_item.title,
+                            content=action_item.summary or action_item.content,
+                            source=action_item.source
+                        )
+                        if domain in ['personal']:
+                            personal_processed += 1
+                        elif domain in ['business', 'accounting', 'social_media']:
+                            business_processed += 1
+                except Exception:
+                    pass
+        
+        # Count cross-domain workflows
+        workflows_path = self.config.business_path / 'Workflows'
+        cross_domain_workflows = 0
+        if workflows_path.exists():
+            for file in workflows_path.glob('*.json'):
+                try:
+                    from models.cross_domain_workflow import CrossDomainWorkflow
+                    workflow = CrossDomainWorkflow.model_validate_json(file.read_text(encoding='utf-8'))
+                    if workflow.status in ['pending', 'in_progress']:
+                        cross_domain_workflows += 1
+                except Exception:
+                    pass
+        
+        return {
+            'personal': {
+                'pending': personal_count,
+                'processed_today': personal_processed
+            },
+            'business': {
+                'pending': business_count,
+                'processed_today': business_processed,
+                'accounting_pending': accounting_count,
+                'social_media_pending': social_media_count
+            },
+            'cross_domain_workflows': cross_domain_workflows
+        }
+    
+    def update_weekly_audit_status(
+        self,
+        last_audit_date: Optional[date] = None,
+        last_briefing_date: Optional[date] = None,
+        next_audit_date: Optional[date] = None
+    ) -> None:
+        """
+        Update weekly audit status in Dashboard.md (Gold Tier).
+        
+        Args:
+            last_audit_date: Date of last audit report
+            last_briefing_date: Date of last CEO briefing
+            next_audit_date: Date of next scheduled audit
+        """
+        if not self.dashboard_path.exists():
+            return
+        
+        try:
+            content = self.dashboard_path.read_text(encoding='utf-8')
+            
+            # Find or create Gold Tier section
+            gold_section_pattern = r'## Gold Tier Metrics\n.*?(?=\n## [A-Z]|$)'
+            gold_section = self._build_gold_tier_section(last_audit_date, last_briefing_date, next_audit_date)
+            
+            if re.search(gold_section_pattern, content, re.DOTALL):
+                content = re.sub(gold_section_pattern, gold_section.strip() + '\n', content, flags=re.DOTALL)
+            else:
+                # Insert before Recent Errors or at end
+                if '## Recent Errors' in content:
+                    content = content.replace('## Recent Errors', gold_section + '\n## Recent Errors')
+                else:
+                    content += '\n' + gold_section
+            
+            self.dashboard_path.write_text(content, encoding='utf-8')
+            
+        except Exception as e:
+            logger.warning(f"Failed to update weekly audit status: {e}")
+    
+    def _build_gold_tier_section(
+        self,
+        last_audit_date: Optional[date],
+        last_briefing_date: Optional[date],
+        next_audit_date: Optional[date]
+    ) -> str:
+        """Build Gold Tier Metrics section for dashboard."""
+        section = ["## Gold Tier Metrics\n"]
+        
+        # Weekly Audit Status
+        section.append("### Weekly Audit Status\n")
+        
+        if last_audit_date:
+            section.append(f"- **Last Audit**: {last_audit_date.isoformat()}\n")
+        else:
+            section.append("- **Last Audit**: Never\n")
+        
+        if last_briefing_date:
+            section.append(f"- **Last CEO Briefing**: {last_briefing_date.isoformat()}\n")
+        else:
+            section.append("- **Last CEO Briefing**: Never\n")
+        
+        if next_audit_date:
+            section.append(f"- **Next Scheduled Audit**: {next_audit_date.isoformat()} (Monday 9:00 AM)\n")
+        else:
+            # Calculate next Monday
+            today = date.today()
+            days_until_monday = (7 - today.weekday()) % 7
+            if days_until_monday == 0 and datetime.now().hour < 9:
+                next_monday = today
+            else:
+                next_monday = today + timedelta(days=days_until_monday if days_until_monday > 0 else 7)
+            section.append(f"- **Next Scheduled Audit**: {next_monday.isoformat()} (Monday 9:00 AM)\n")
+        
+        section.append("\n")
+        
+        return ''.join(section)
+    
+    def update_ai_processor_status(
+        self,
+        uptime_seconds: int,
+        items_processed: int,
+        items_failed: int,
+        last_check_time: datetime
+    ) -> None:
+        """
+        Update AI Processor status in Dashboard.md (Gold Tier).
+        
+        Args:
+            uptime_seconds: Processor uptime in seconds
+            items_processed: Total items processed
+            items_failed: Total items failed
+            last_check_time: Last check timestamp
+        """
+        self._ensure_dashboard_exists()
+        content = self.dashboard_path.read_text(encoding='utf-8')
+        
+        # Format uptime
+        hours = uptime_seconds // 3600
+        minutes = (uptime_seconds % 3600) // 60
+        uptime_str = f"{hours}h {minutes}m"
+        
+        # Update or add AI Processor section
+        processor_section = f"""## AI Processor Status (Gold Tier)
+
+**Status**: ✅ Running
+**Uptime**: {uptime_str}
+**Items Processed**: {items_processed}
+**Items Failed**: {items_failed}
+**Last Check**: {last_check_time.strftime('%Y-%m-%d %H:%M:%S')}
+**Success Rate**: {(items_processed / (items_processed + items_failed) * 100) if (items_processed + items_failed) > 0 else 0:.1f}%
+
+"""
+        
+        # Check if AI Processor section exists
+        if "## AI Processor Status" in content:
+            # Replace existing section
+            pattern = r"## AI Processor Status.*?(?=\n## |\Z)"
+            content = re.sub(pattern, processor_section.strip(), content, flags=re.DOTALL)
+        else:
+            # Add after System Status section
+            if "## System Status" in content:
+                content = content.replace("## System Status", f"## System Status\n\n{processor_section}")
+            else:
+                # Add at the end
+                content += f"\n\n{processor_section}"
+        
+        # Update frontmatter
+        content = self._update_frontmatter_field(
+            content, 'last_updated', datetime.now().isoformat()
+        )
+        
+        self.dashboard_path.write_text(content, encoding='utf-8')
 
     def render(self) -> str:
         """
@@ -321,9 +544,9 @@ No recent errors.
 
 **Pending**: 0 | **Oldest**: N/A
 
-### MCP Server Health
+### MCP Server Health (T088)
 
-No MCP servers configured.
+{self._build_mcp_health_section()}
 
 ### All Watchers Status
 
@@ -332,6 +555,10 @@ No watcher status data available.
 ### Recent Audit Entries (Last 10)
 
 No audit entries for today.
+
+## Gold Tier: Cross-Domain Metrics (T081)
+
+{self._build_cross_domain_section()}
 
 ## Quick Actions
 
@@ -428,6 +655,109 @@ No audit entries for today.
 
         return re.sub(pattern, replacement, content)
 
+    def _build_mcp_health_section(self) -> str:
+        """
+        Build MCP server health section for Dashboard (T088).
+        
+        Returns:
+            Markdown section with MCP server health status
+        """
+        try:
+            health_checker = get_default_health_checker(self.config.vault_path)
+            all_statuses = health_checker.get_all_server_statuses()
+            
+            if not all_statuses:
+                return "No MCP servers configured or no status data available.\n"
+            
+            section = []
+            section.append("| Server | Status | Success Rate | Avg Response | Last Success |\n")
+            section.append("|--------|--------|--------------|--------------|-------------|\n")
+            
+            for server_name, status in sorted(all_statuses.items()):
+                # Status emoji
+                status_emoji = {
+                    'healthy': '✅',
+                    'degraded': '⚠️',
+                    'down': '❌',
+                    'unknown': '❓'
+                }.get(status.status, '❓')
+                
+                # Format success rate
+                success_rate = status.calculate_success_rate()
+                success_rate_str = f"{success_rate:.1f}%" if status.total_requests > 0 else "N/A"
+                
+                # Format average response time
+                avg_response_str = f"{status.average_response_time_ms:.0f}ms" if status.average_response_time_ms > 0 else "N/A"
+                
+                # Format last success time
+                if status.last_successful_request:
+                    last_success_str = status.last_successful_request.strftime('%Y-%m-%d %H:%M')
+                else:
+                    last_success_str = "Never"
+                
+                section.append(
+                    f"| {server_name} | {status_emoji} {status.status} | {success_rate_str} | "
+                    f"{avg_response_str} | {last_success_str} |\n"
+                )
+            
+            # Add degraded/down servers summary
+            degraded = health_checker.get_degraded_servers()
+            down = health_checker.get_down_servers()
+            
+            if degraded or down:
+                section.append("\n**⚠️ Degraded Servers**: " + (", ".join(degraded) if degraded else "None") + "\n")
+                section.append("**❌ Down Servers**: " + (", ".join(down) if down else "None") + "\n")
+            
+            return ''.join(section)
+        except Exception as e:
+            logger.warning(f"Failed to build MCP health section: {e}")
+            return "Error loading MCP server health status.\n"
+    
+    def _build_cross_domain_section(self) -> str:
+        """
+        Build cross-domain metrics section for Dashboard (T081).
+        
+        Returns:
+            Markdown section with Personal and Business domain metrics
+        """
+        domain_stats = self.get_domain_stats()
+        
+        section = []
+        section.append("### Personal Domain\n")
+        section.append(f"- **Pending Items**: {domain_stats['personal']['pending']}\n")
+        section.append(f"- **Processed Today**: {domain_stats['personal']['processed_today']}\n")
+        section.append("\n")
+        
+        section.append("### Business Domain\n")
+        section.append(f"- **Pending Items**: {domain_stats['business']['pending']}\n")
+        section.append(f"- **Accounting Pending**: {domain_stats['business']['accounting_pending']}\n")
+        section.append(f"- **Social Media Pending**: {domain_stats['business']['social_media_pending']}\n")
+        section.append(f"- **Processed Today**: {domain_stats['business']['processed_today']}\n")
+        section.append("\n")
+        
+        section.append("### Cross-Domain Workflows\n")
+        section.append(f"- **Active Workflows**: {domain_stats['cross_domain_workflows']}\n")
+        section.append("\n")
+        
+        # Calculate unified KPIs
+        total_pending = (domain_stats['personal']['pending'] + 
+                        domain_stats['business']['pending'] + 
+                        domain_stats['business']['accounting_pending'] + 
+                        domain_stats['business']['social_media_pending'])
+        total_processed = (domain_stats['personal']['processed_today'] + 
+                          domain_stats['business']['processed_today'])
+        
+        automation_rate = 0.0
+        if total_pending + total_processed > 0:
+            automation_rate = (total_processed / (total_pending + total_processed)) * 100
+        
+        section.append("### Unified KPIs\n")
+        section.append(f"- **Total Automation Rate**: {automation_rate:.1f}%\n")
+        section.append(f"- **Total Pending**: {total_pending}\n")
+        section.append(f"- **Total Processed Today**: {total_processed}\n")
+        
+        return ''.join(section)
+    
     def _build_pending_items_table(self) -> str:
         """
         Build the pending items table rows.

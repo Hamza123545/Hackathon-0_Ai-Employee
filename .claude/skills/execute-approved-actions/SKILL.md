@@ -60,7 +60,13 @@ When processing approved actions, you must:
 
 ### 2.2 Invoke MCP Server Tools
 
-Based on the action type, invoke the appropriate MCP tool:
+**Domain-Specific Routing (Gold Tier - T079)**: Route actions to correct MCP server based on domain classification:
+- **Personal Domain**: email-mcp, linkedin-mcp, playwright-mcp
+- **Business Domain**: email-mcp, linkedin-mcp, facebook-mcp
+- **Accounting Domain**: xero-mcp
+- **Social Media Domain**: facebook-mcp, instagram-mcp, twitter-mcp
+
+Based on the action type and domain, invoke the appropriate MCP tool:
 
 **Email Actions**:
 - MCP Server: `email` (or `gmail-mcp`)
@@ -81,6 +87,44 @@ Based on the action type, invoke the appropriate MCP tool:
 - MCP Server: `payment` or `banking` (custom)
 - Tool: `initiate_payment` or `transfer_funds`
 - Parameters: `amount`, `recipient`, `reference`
+
+**Xero Accounting Actions** (Gold Tier):
+- MCP Server: `xero-mcp`
+- Tool: `create_expense` - Create expense entry in Xero
+  - Parameters: `amount`, `date`, `description`, `category`, `currency`, `receipt_url` (optional)
+- Tool: `create_invoice` - Create invoice in Xero
+  - Parameters: `contact_name`, `line_items`, `due_date`, `reference` (optional), `currency`
+- Tool: `get_invoices` - Retrieve invoices (read-only, no approval needed)
+- Tool: `get_financial_report` - Generate financial reports (read-only, no approval needed)
+- Tool: `sync_bank_transactions` - Sync bank transactions (read-only, no approval needed)
+
+**Facebook Actions** (Gold Tier):
+- MCP Server: `facebook-mcp`
+- Tool: `post_to_page` - Post message to Facebook Page (requires approval)
+  - Parameters: `page_id`, `message`, `link` (optional), `published` (default: true)
+- Tool: `get_page_posts` - Retrieve recent posts (read-only, no approval needed)
+- Tool: `get_engagement_summary` - Get aggregated engagement metrics (read-only, no approval needed)
+- Tool: `delete_post` - Delete a post from Facebook Page (requires approval)
+
+**Instagram Actions** (Gold Tier):
+- MCP Server: `instagram-mcp`
+- Tool: `post_photo` - Post photo to Instagram Business account (requires approval, two-step: container + publish)
+  - Parameters: `instagram_business_id`, `image_url`, `caption`, `location_id` (optional), `user_tags` (optional)
+- Tool: `post_video` - Post video to Instagram Business account (requires approval, two-step: container + publish)
+  - Parameters: `instagram_business_id`, `video_url`, `caption`, `location_id` (optional), `thumb_offset` (optional)
+- Tool: `get_media` - Retrieve Instagram media posts (read-only, no approval needed)
+- Tool: `get_insights` - Get Instagram Business account insights (read-only, no approval needed)
+- Tool: `get_media_insights` - Get insights for specific media post (read-only, no approval needed)
+
+**Twitter/X Actions** (Gold Tier):
+- MCP Server: `twitter-mcp`
+- Tool: `post_tweet` - Post a tweet (requires approval, 280 char limit)
+  - Parameters: `text`, `reply_to_tweet_id` (optional), `quote_tweet_id` (optional), `media_ids` (optional, max 4), `poll_options` (optional), `poll_duration_minutes` (optional), `reply_settings` (default: "everyone")
+- Tool: `delete_tweet` - Delete a tweet (requires approval)
+  - Parameters: `tweet_id`, `reason` (optional)
+- Tool: `get_user_tweets` - Retrieve recent tweets with metrics (read-only, no approval needed)
+- Tool: `get_tweet_metrics` - Get detailed engagement metrics for a tweet (read-only, no approval needed)
+- Tool: `get_engagement_summary` - Get aggregated engagement metrics for a period (read-only, no approval needed)
 
 **Important**: 
 - Always verify MCP server is available before invoking

@@ -1,14 +1,29 @@
-# Personal AI Employee - Bronze Tier
+# Personal AI Employee - Gold Tier
 
-A Python-based autonomous AI assistant that monitors external sources (filesystem, Gmail) and creates actionable plans in an Obsidian vault.
+A Python-based autonomous AI assistant that monitors external sources (filesystem, Gmail, WhatsApp, LinkedIn), processes action items automatically, integrates with business systems (Xero, Facebook, Instagram, Twitter), and generates weekly business intelligence reports.
 
 ## Features
 
+### Bronze Tier
 - **Filesystem Watcher**: Monitor a folder for new files and create action items
 - **Gmail Watcher**: Poll Gmail inbox for new emails and create action items
 - **Obsidian Integration**: Store all data as Markdown files in an Obsidian vault
 - **Dashboard**: Real-time status dashboard updated automatically
 - **Claude Code Skills**: Process action items and generate structured plans
+
+### Silver Tier
+- **Multi-Channel Watchers**: Gmail, WhatsApp, LinkedIn, Filesystem
+- **MCP Server Integration**: Email, LinkedIn, Browser automation
+- **Approval Workflow**: Human-in-the-loop (HITL) for external actions
+- **Audit Logging**: Complete audit trail with credential sanitization
+
+### Gold Tier (NEW)
+- **Autonomous Processing**: AI Processor automatically processes action items (no manual invocation)
+- **Xero Accounting Integration**: Automatic expense tracking, invoice creation, financial reports
+- **Multi-Platform Social Media**: Facebook, Instagram, Twitter automation
+- **Weekly Business Intelligence**: Automated audits and CEO briefings with AI insights
+- **Cross-Domain Integration**: Seamless workflows spanning personal and business domains
+- **Error Recovery**: Exponential backoff retry, request caching, graceful degradation
 
 ## Quick Start
 
@@ -201,13 +216,73 @@ Enable verbose logging:
 LOG_LEVEL=DEBUG uv run python -m AI_Employee.main
 ```
 
-## Bronze Tier Limitations
+## Gold Tier Quick Start
 
-This is the Bronze tier implementation:
-- Manual execution of all plans
-- No automatic email sending
-- No external API integrations
-- Human-in-the-loop for all actions
+### Prerequisites
+
+1. **Bronze + Silver Tier Operational**: Ensure all Bronze and Silver tier features are working
+2. **API Access**: 
+   - Xero account with API access
+   - Facebook Page with admin access
+   - Instagram Business Account
+   - Twitter Developer Account
+3. **Python 3.10+** with required dependencies
+
+### Setup Steps
+
+1. **Install Gold Tier Dependencies**:
+   ```bash
+   pip install xero-python pyfacebook tweepy schedule keyring
+   ```
+
+2. **Configure Environment Variables** (add to `.env`):
+   ```env
+   # Xero API
+   XERO_CLIENT_ID=your_client_id
+   XERO_CLIENT_SECRET=your_client_secret
+   XERO_TENANT_ID=your_tenant_id
+   
+   # Facebook/Instagram API
+   FACEBOOK_APP_ID=your_app_id
+   FACEBOOK_APP_SECRET=your_app_secret
+   FACEBOOK_PAGE_ID=your_page_id
+   
+   # Twitter API
+   TWITTER_CLIENT_ID=your_client_id
+   TWITTER_CLIENT_SECRET=your_client_secret
+   
+   # Anthropic API (for AI insights)
+   ANTHROPIC_API_KEY=your_api_key
+   ```
+
+3. **Run Verification Script**:
+   ```bash
+   python scripts/verify_gold_prerequisites.py
+   ```
+
+4. **Start AI Processor** (PM2):
+   ```bash
+   pm2 start ecosystem.config.js --only ai-processor
+   ```
+
+5. **Start MCP Health Checker** (PM2):
+   ```bash
+   pm2 start ecosystem.config.js --only mcp-health-checker
+   ```
+
+For detailed setup instructions, see `specs/003-gold-tier-ai-employee/quickstart.md`.
+
+## Tier Comparison
+
+| Feature | Bronze | Silver | Gold |
+|---------|--------|--------|------|
+| Watchers | Filesystem, Gmail | + WhatsApp, LinkedIn | All + Autonomous |
+| Processing | Manual skill invocation | Manual skill invocation | **Automatic** |
+| MCP Servers | None | Email, LinkedIn, Browser | + Xero, Facebook, Instagram, Twitter |
+| Approval Workflow | N/A | HITL required | HITL + Auto-processing |
+| Business Intelligence | N/A | N/A | **Weekly audits + CEO briefings** |
+| Cross-Domain | N/A | N/A | **Personal + Business integration** |
+| Error Recovery | Basic | Basic | **Exponential backoff + caching** |
 
 ## License
 

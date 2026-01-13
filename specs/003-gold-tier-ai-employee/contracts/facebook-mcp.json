@@ -1,0 +1,239 @@
+{
+  "server_name": "facebook-mcp",
+  "protocol": "stdio",
+  "version": "1.0.0",
+  "description": "MCP server for Facebook Pages integration - post messages, retrieve engagement metrics, manage social media presence",
+  "authentication": {
+    "type": "oauth2",
+    "flow": "authorization_code",
+    "authorization_url": "https://www.facebook.com/dialog/oauth",
+    "token_url": "https://graph.facebook.com/oauth/access_token",
+    "scopes": [
+      "pages_show_list",
+      "pages_read_engagement",
+      "pages_manage_posts",
+      "pages_read_user_content"
+    ],
+    "token_storage": "os_credential_manager",
+    "refresh_token_enabled": false,
+    "token_type": "page_access_token",
+    "token_notes": "Exchange user access token for page access token (never expires for long-lived)"
+  },
+  "rate_limits": {
+    "requests_per_hour": 200,
+    "burst_limit": 50,
+    "daily_limit": 4800,
+    "retry_strategy": "exponential_backoff",
+    "backoff_delays": [1, 2, 4],
+    "rate_limit_sleep_mapping": {
+      "50": 2,
+      "75": 5,
+      "90": 10
+    }
+  },
+  "tools": [
+    {
+      "name": "post_to_page",
+      "description": "Post a message to a Facebook Page with optional link (requires approval via HITL workflow)",
+      "parameters": {
+        "type": "object",
+        "required": ["page_id", "message"],
+        "properties": {
+          "page_id": {
+            "type": "string",
+            "description": "Facebook Page ID to post to"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 5000,
+            "description": "Post message content (max 5000 characters)"
+          },
+          "link": {
+            "type": "string",
+            "format": "uri",
+            "description": "Optional URL to attach to the post"
+          },
+          "published": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to publish immediately (false for draft)"
+          }
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "post_id": {"type": "string"},
+          "message": {"type": "string"},
+          "created_time": {"type": "string", "format": "date-time"},
+          "from": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "id": {"type": "string"}
+            }
+          },
+          "approval_request_id": {"type": "string"}
+        }
+      },
+      "requires_approval": true,
+      "approval_workflow": "Creates approval request in /Pending_Approval/, requires human approval before posting"
+    },
+    {
+      "name": "get_page_posts",
+      "description": "Retrieve recent posts from a Facebook Page with engagement data",
+      "parameters": {
+        "type": "object",
+        "required": ["page_id"],
+        "properties": {
+          "page_id": {
+            "type": "string",
+            "description": "Facebook Page ID"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Number of posts to retrieve (max 100)"
+          },
+          "fields": {
+            "type": "string",
+            "default": "id,message,created_time,likes.summary(true),comments.summary(true),shares",
+            "description": "Comma-separated list of fields to retrieve"
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Retrieve posts since this timestamp (ISO 8601)"
+          },
+          "until": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Retrieve posts until this timestamp (ISO 8601)"
+          }
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "posts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "post_id": {"type": "string"},
+                "message": {"type": "string"},
+                "created_time": {"type": "string", "format": "date-time"},
+                "likes": {"type": "integer"},
+                "comments": {"type": "integer"},
+                "shares": {"type": "integer"}
+              }
+            }
+          },
+          "total_count": {"type": "integer"},
+          "next_page": {"type": "string"}
+        }
+      },
+      "requires_approval": false,
+      "usage": "Used by weekly audit generator to retrieve engagement metrics"
+    },
+    {
+      "name": "get_engagement_summary",
+      "description": "Get aggregated engagement metrics for a Facebook Page over a specified period",
+      "parameters": {
+        "type": "object",
+        "required": ["page_id", "since", "until"],
+        "properties": {
+          "page_id": {
+            "type": "string",
+            "description": "Facebook Page ID"
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Start date for metrics (ISO 8601)"
+          },
+          "until": {
+            "type": "string",
+            "format": "date-time",
+            "description": "End date for metrics (ISO 8601)"
+          },
+          "metrics": {
+            "type": "array",
+            "items": {"type": "string"},
+            "default": ["page_impressions", "page_engaged_users", "page_post_engagements"],
+            "description": "List of metric types to retrieve"
+          }
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "page_id": {"type": "string"},
+          "period": {"type": "string"},
+          "total_likes": {"type": "integer"},
+          "total_comments": {"type": "integer"},
+          "total_shares": {"type": "integer"},
+          "total_reach": {"type": "integer"},
+          "engagement_rate": {"type": "number"},
+          "generated_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "requires_approval": false,
+      "usage": "Used by weekly audit generator to calculate social media engagement metrics"
+    },
+    {
+      "name": "delete_post",
+      "description": "Delete a post from Facebook Page (requires approval via HITL workflow)",
+      "parameters": {
+        "type": "object",
+        "required": ["post_id"],
+        "properties": {
+          "post_id": {
+            "type": "string",
+            "description": "Facebook post ID to delete"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Reason for deletion (for audit trail)"
+          }
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"},
+          "post_id": {"type": "string"},
+          "deleted_at": {"type": "string", "format": "date-time"},
+          "approval_request_id": {"type": "string"}
+        }
+      },
+      "requires_approval": true,
+      "approval_workflow": "Creates approval request in /Pending_Approval/, requires human approval before deletion"
+    }
+  ],
+  "health_check": {
+    "endpoint": "/health",
+    "method": "GET",
+    "expected_response": {"status": "healthy", "connected": true}
+  },
+  "errors": [
+    {"code": 190, "type": "OAuthException", "message": "Access token expired or invalid", "retry": true, "action": "refresh_token"},
+    {"code": 4, "type": "API_TOO_MANY_CALLS", "message": "Rate limit exceeded (200/hour)", "retry": true, "wait": 3600},
+    {"code": 17, "type": "API_USER_TOO_MANY_CALLS", "message": "User rate limit exceeded", "retry": true, "wait": 3600},
+    {"code": 10, "type": "API_PERMISSION_DENIED", "message": "Permission not granted or removed", "retry": false},
+    {"code": 341, "type": "APPLICATION_LIMIT_REACHED", "message": "Application rate limit reached", "retry": true, "wait": 3600},
+    {"code": 506, "type": "DUPLICATE_POST", "message": "Duplicate post detected", "retry": false},
+    {"code": 463, "subcode": 463, "type": "EXPIRED_TOKEN", "message": "Token expired", "retry": true, "action": "refresh_token"},
+    {"code": 467, "subcode": 467, "type": "INVALID_ACCESS_TOKEN", "message": "Invalid access token", "retry": true, "action": "refresh_token"},
+    {"code": 1, "type": "API_UNKNOWN", "message": "Temporary API issue", "retry": true, "wait": 60},
+    {"code": 2, "type": "API_SERVICE", "message": "Service temporarily unavailable", "retry": true, "wait": 60}
+  ],
+  "logging": {
+    "log_file": "/Logs/facebook_mcp.log",
+    "log_level": "INFO",
+    "sanitize_credentials": true,
+    "log_all_requests": true
+  }
+}

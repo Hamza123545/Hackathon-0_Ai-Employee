@@ -1,0 +1,305 @@
+{
+  "server_name": "instagram-mcp",
+  "protocol": "stdio",
+  "version": "1.0.0",
+  "description": "MCP server for Instagram Business integration - post photos/videos, retrieve engagement metrics, manage Instagram business presence",
+  "authentication": {
+    "type": "oauth2",
+    "flow": "authorization_code",
+    "authorization_url": "https://www.facebook.com/dialog/oauth",
+    "token_url": "https://graph.facebook.com/oauth/access_token",
+    "scopes": [
+      "instagram_basic",
+      "instagram_content_publish",
+      "pages_read_engagement",
+      "pages_show_list"
+    ],
+    "token_storage": "os_credential_manager",
+    "refresh_token_enabled": false,
+    "token_type": "instagram_access_token",
+    "token_notes": "Requires Instagram Business Account linked to Facebook Page. Exchange user token for page token, then use for Instagram API."
+  },
+  "rate_limits": {
+    "requests_per_hour": 200,
+    "burst_limit": 50,
+    "daily_limit": 4800,
+    "retry_strategy": "exponential_backoff",
+    "backoff_delays": [1, 2, 4],
+    "rate_limit_sleep_mapping": {
+      "50": 2,
+      "75": 5,
+      "90": 10
+    }
+  },
+  "tools": [
+    {
+      "name": "post_photo",
+      "description": "Post a photo to Instagram Business account (requires approval via HITL workflow). Two-step process: create container, then publish.",
+      "parameters": {
+        "type": "object",
+        "required": ["instagram_business_id", "image_url", "caption"],
+        "properties": {
+          "instagram_business_id": {
+            "type": "string",
+            "description": "Instagram Business Account ID"
+          },
+          "image_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Publicly accessible URL of the image to post"
+          },
+          "caption": {
+            "type": "string",
+            "maxLength": 2200,
+            "description": "Caption for the post (max 2200 characters)"
+          },
+          "location_id": {
+            "type": "string",
+            "description": "Optional Instagram location ID to tag"
+          },
+          "user_tags": {
+            "type": "string",
+            "description": "Optional JSON string with user tags [{'username': 'user', 'x': 0.5, 'y': 0.8}]"
+          }
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "media_id": {"type": "string"},
+          "container_id": {"type": "string"},
+          "status": {"type": "string"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "approval_request_id": {"type": "string"}
+        }
+      },
+      "requires_approval": true,
+      "approval_workflow": "Creates approval request in /Pending_Approval/, requires human approval before posting. Process: create container → approve → publish."
+    },
+    {
+      "name": "post_video",
+      "description": "Post a video to Instagram Business account (requires approval via HITL workflow). Two-step process: create container, then publish.",
+      "parameters": {
+        "type": "object",
+        "required": ["instagram_business_id", "video_url", "caption"],
+        "properties": {
+          "instagram_business_id": {
+            "type": "string",
+            "description": "Instagram Business Account ID"
+          },
+          "video_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Publicly accessible URL of the video to post (MP4 format)"
+          },
+          "caption": {
+            "type": "string",
+            "maxLength": 2200,
+            "description": "Caption for the video (max 2200 characters)"
+          },
+          "location_id": {
+            "type": "string",
+            "description": "Optional Instagram location ID to tag"
+          },
+          "thumb_offset": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Offset in seconds for video thumbnail frame"
+          }
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "media_id": {"type": "string"},
+          "container_id": {"type": "string"},
+          "status": {"type": "string"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "approval_request_id": {"type": "string"}
+        }
+      },
+      "requires_approval": true,
+      "approval_workflow": "Creates approval request in /Pending_Approval/, requires human approval before posting. Process: create container → approve → publish."
+    },
+    {
+      "name": "get_media",
+      "description": "Retrieve Instagram media posts from business account with basic metadata",
+      "parameters": {
+        "type": "object",
+        "required": ["instagram_business_id"],
+        "properties": {
+          "instagram_business_id": {
+            "type": "string",
+            "description": "Instagram Business Account ID"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Number of media items to retrieve (max 100)"
+          },
+          "fields": {
+            "type": "string",
+            "default": "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count",
+            "description": "Comma-separated list of fields to retrieve"
+          }
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "media_id": {"type": "string"},
+                "caption": {"type": "string"},
+                "media_type": {"type": "string"},
+                "permalink": {"type": "string"},
+                "timestamp": {"type": "string", "format": "date-time"},
+                "like_count": {"type": "integer"},
+                "comments_count": {"type": "integer"}
+              }
+            }
+          },
+          "total_count": {"type": "integer"},
+          "next_page": {"type": "string"}
+        }
+      },
+      "requires_approval": false,
+      "usage": "Used by weekly audit generator to retrieve Instagram media for engagement analysis"
+    },
+    {
+      "name": "get_insights",
+      "description": "Get Instagram Business account insights for specified metrics and period",
+      "parameters": {
+        "type": "object",
+        "required": ["instagram_business_id", "metric", "period"],
+        "properties": {
+          "instagram_business_id": {
+            "type": "string",
+            "description": "Instagram Business Account ID"
+          },
+          "metric": {
+            "type": "string",
+            "description": "Comma-separated metrics (impressions, reach, profile_views, follower_count, email_contacts, phone_call_clicks, text_message_clicks, website_clicks)"
+          },
+          "period": {
+            "type": "string",
+            "enum": ["day", "week", "days_28", "lifetime"],
+            "description": "Time period for insights"
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Start date for insights (Unix timestamp or ISO 8601)"
+          },
+          "until": {
+            "type": "string",
+            "format": "date-time",
+            "description": "End date for insights (Unix timestamp or ISO 8601)"
+          }
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "insights": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {"type": "string"},
+                "period": {"type": "string"},
+                "values": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {"type": "number"},
+                      "end_time": {"type": "string", "format": "date-time"}
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "generated_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "requires_approval": false,
+      "usage": "Used by weekly audit generator to retrieve Instagram engagement metrics for CEO briefing"
+    },
+    {
+      "name": "get_media_insights",
+      "description": "Get insights for a specific Instagram media post (engagement, impressions, reach, saves)",
+      "parameters": {
+        "type": "object",
+        "required": ["media_id", "metric"],
+        "properties": {
+          "media_id": {
+            "type": "string",
+            "description": "Instagram media ID"
+          },
+          "metric": {
+            "type": "string",
+            "description": "Comma-separated metrics (engagement, impressions, reach, saved, video_views)"
+          }
+        }
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "media_id": {"type": "string"},
+          "insights": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {"type": "string"},
+                "period": {"type": "string"},
+                "values": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {"type": "number"}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "requires_approval": false,
+      "usage": "Used by weekly audit generator to analyze individual post performance"
+    }
+  ],
+  "health_check": {
+    "endpoint": "/health",
+    "method": "GET",
+    "expected_response": {"status": "healthy", "connected": true}
+  },
+  "errors": [
+    {"code": 190, "type": "OAuthException", "message": "Access token expired or invalid", "retry": true, "action": "refresh_token"},
+    {"code": 4, "type": "API_TOO_MANY_CALLS", "message": "Rate limit exceeded (200/hour)", "retry": true, "wait": 3600},
+    {"code": 17, "type": "API_USER_TOO_MANY_CALLS", "message": "User rate limit exceeded", "retry": true, "wait": 3600},
+    {"code": 10, "type": "API_PERMISSION_DENIED", "message": "Permission not granted or removed", "retry": false},
+    {"code": 341, "type": "APPLICATION_LIMIT_REACHED", "message": "Application rate limit reached", "retry": true, "wait": 3600},
+    {"code": 100, "type": "INVALID_PARAMETER", "message": "Invalid parameter value", "retry": false},
+    {"code": 463, "subcode": 463, "type": "EXPIRED_TOKEN", "message": "Token expired", "retry": true, "action": "refresh_token"},
+    {"code": 467, "subcode": 467, "type": "INVALID_ACCESS_TOKEN", "message": "Invalid access token", "retry": true, "action": "refresh_token"},
+    {"code": 9004, "type": "MEDIA_UPLOAD_FAILED", "message": "Media upload failed", "retry": true, "wait": 60},
+    {"code": 1, "type": "API_UNKNOWN", "message": "Temporary API issue", "retry": true, "wait": 60},
+    {"code": 2, "type": "API_SERVICE", "message": "Service temporarily unavailable", "retry": true, "wait": 60}
+  ],
+  "logging": {
+    "log_file": "/Logs/instagram_mcp.log",
+    "log_level": "INFO",
+    "sanitize_credentials": true,
+    "log_all_requests": true
+  }
+}

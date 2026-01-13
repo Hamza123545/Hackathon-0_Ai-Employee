@@ -1,11 +1,15 @@
 """
-MCP Servers for Silver Tier Personal AI Employee.
+MCP Servers for Personal AI Employee.
 
-This package contains FastMCP-based servers for external action execution:
-
+Silver Tier:
 - email_mcp: Send emails via SMTP with TLS
 - linkedin_mcp: Post to LinkedIn via API v2
 - playwright_mcp: Browser automation via Playwright
+
+Gold Tier:
+- xero_mcp: Xero accounting integration (invoices, expenses, reports, bank transactions)
+- xero_mcp_auth: OAuth 2.0 authentication for Xero
+- xero_mcp_cache: Request caching for zero data loss
 """
 
 from .email_mcp import send_email, health_check as email_health_check

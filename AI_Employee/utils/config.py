@@ -76,6 +76,9 @@ class Config:
 
         # Silver tier configuration
         self._load_silver_tier_config()
+        
+        # Gold tier configuration
+        self._load_gold_tier_config()
 
     def _load_silver_tier_config(self) -> None:
         """Load Silver tier specific configuration from environment."""
@@ -114,6 +117,31 @@ class Config:
         self.smtp_username = os.getenv('SMTP_USERNAME', '')
         self.smtp_password = os.getenv('SMTP_PASSWORD', '')
         self.smtp_from_address = os.getenv('FROM_ADDRESS', '')
+    
+    def _load_gold_tier_config(self) -> None:
+        """Load Gold tier specific configuration from environment."""
+        # AI Processor settings
+        self.processing_interval = int(
+            os.getenv('PROCESSING_INTERVAL', '30')
+        )
+        self.ai_processor_enabled = os.getenv(
+            'AI_PROCESSOR_ENABLED', 'false'
+        ).lower() in ('true', '1', 'yes')
+        self.auto_process_personal = os.getenv(
+            'AUTO_PROCESS_PERSONAL', 'true'
+        ).lower() in ('true', '1', 'yes')
+        self.auto_process_business = os.getenv(
+            'AUTO_PROCESS_BUSINESS', 'true'
+        ).lower() in ('true', '1', 'yes')
+        
+        # Claude API for AI-generated insights
+        self.anthropic_api_key = os.getenv('ANTHROPIC_API_KEY', '')
+        
+        # Xero settings
+        self.xero_client_id = os.getenv('XERO_CLIENT_ID', '')
+        self.xero_client_secret = os.getenv('XERO_CLIENT_SECRET', '')
+        self.xero_tenant_id = os.getenv('XERO_TENANT_ID', '')
+        self.xero_redirect_uri = os.getenv('XERO_REDIRECT_URI', 'http://localhost:8000/oauth/xero/callback')
 
     @property
     def needs_action_path(self) -> Path:
@@ -174,6 +202,26 @@ class Config:
     def screenshots_path(self) -> Path:
         """Path to the Logs/screenshots folder (Silver tier)."""
         return self.logs_path / 'screenshots'
+    
+    @property
+    def accounting_path(self) -> Path:
+        """Path to the Accounting folder (Gold tier)."""
+        return self.vault_path / 'Accounting'
+    
+    @property
+    def business_path(self) -> Path:
+        """Path to the Business folder (Gold tier)."""
+        return self.vault_path / 'Business'
+    
+    @property
+    def briefings_path(self) -> Path:
+        """Path to the Briefings folder (Gold tier)."""
+        return self.vault_path / 'Briefings'
+    
+    @property
+    def system_path(self) -> Path:
+        """Path to the System folder (Gold tier)."""
+        return self.vault_path / 'System'
 
     def get_mcp_servers_config(self) -> dict[str, Any]:
         """
@@ -363,6 +411,30 @@ class Config:
         # Create Silver folders if requested
         if include_silver:
             for folder in silver_folders:
+                folder.mkdir(parents=True, exist_ok=True)
+            
+            # Gold tier folders (extends Silver)
+            gold_folders = [
+                self.accounting_path / 'Transactions',
+                self.accounting_path / 'Summaries',
+                self.accounting_path / 'Audits',
+                self.business_path / 'Goals',
+                self.business_path / 'Social_Media' / 'facebook',
+                self.business_path / 'Social_Media' / 'instagram',
+                self.business_path / 'Social_Media' / 'twitter',
+                self.business_path / 'Workflows',
+                self.business_path / 'Metrics',
+                self.business_path / 'Engagement',
+                self.briefings_path,
+                self.system_path / 'MCP_Status',
+                self.system_path / 'Failed_Requests'
+            ]
+            
+            # Create social media folders
+            for folder in gold_folders:
+                folder.mkdir(parents=True, exist_ok=True)
+            
+            for folder in gold_folders:
                 folder.mkdir(parents=True, exist_ok=True)
 
     def __repr__(self) -> str:

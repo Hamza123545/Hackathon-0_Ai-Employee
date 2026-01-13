@@ -37,3 +37,11 @@ aiohttp>=3.9.0
 
 # Data validation and serialization
 pydantic>=2.5.0
+
+# ============================================
+# GOLD TIER / OPTIONAL DEPENDENCIES
+# ============================================
+
+# Anthropic API (for automatic AI processing)
+# Optional: Install with: pip install anthropic
+# anthropic>=0.18.0
