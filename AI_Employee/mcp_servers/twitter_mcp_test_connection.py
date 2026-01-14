@@ -7,12 +7,19 @@ Tests connection to Twitter API v2 and verifies authentication.
 import os
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Set stdout encoding to UTF-8 for Windows compatibility
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from mcp_servers.twitter_mcp_auth import TwitterAuthManager
-from utils.config import Config
+# Load environment variables from .env file
+env_path = Path(__file__).parent.parent / '.env'
+load_dotenv(dotenv_path=env_path)
 
 
 def test_connection() -> bool:
@@ -22,11 +29,9 @@ def test_connection() -> bool:
     Returns:
         True if connection successful, False otherwise
     """
-    config = Config()
-
-    # Check environment variables
-    client_id = config.twitter_client_id or os.getenv('TWITTER_CLIENT_ID', '')
-    client_secret = config.twitter_client_secret or os.getenv('TWITTER_CLIENT_SECRET', '')
+    # Check environment variables directly (standalone test)
+    client_id = os.getenv('TWITTER_CLIENT_ID', '')
+    client_secret = os.getenv('TWITTER_CLIENT_SECRET', '')
     redirect_uri = os.getenv('TWITTER_REDIRECT_URI', 'http://localhost:8000/oauth/twitter/callback')
 
     if not client_id:
@@ -34,7 +39,7 @@ def test_connection() -> bool:
         print("   Set TWITTER_CLIENT_ID environment variable")
         return False
 
-    print(f"✅ Twitter Client ID: {client_id[:8]}...")
+    print(f"✅ Twitter Client ID: {client_id[:8]}..." if len(client_id) > 8 else f"✅ Twitter Client ID: {client_id}")
 
     if client_secret:
         print(f"✅ Twitter Client Secret: {'*' * 8}...")
@@ -45,6 +50,8 @@ def test_connection() -> bool:
 
     # Initialize auth manager
     try:
+        from mcp_servers.twitter_mcp_auth import TwitterAuthManager
+
         auth_manager = TwitterAuthManager(
             client_id=client_id,
             client_secret=client_secret if client_secret else None,
@@ -73,7 +80,7 @@ def test_connection() -> bool:
                 user = me.data
                 metrics = user.public_metrics if hasattr(user, 'public_metrics') else {}
 
-                print(f"✅ Successfully connected to Twitter API v2")
+                print("✅ Successfully connected to Twitter API v2")
                 print(f"   Username: @{user.username}")
                 print(f"   Name: {user.name}")
                 print(f"   User ID: {user.id}")
@@ -87,12 +94,6 @@ def test_connection() -> bool:
             else:
                 print("❌ Failed to retrieve user data from Twitter API")
                 return False
-
-        except tweepy.errors.Unauthorized as e:
-            print(f"❌ Authentication failed: Token may be expired or invalid")
-            print(f"   Error: {e}")
-            print("   Run: python mcp_servers/twitter_mcp_auth.py")
-            return False
 
         except Exception as e:
             print(f"❌ API connection test failed: {e}")

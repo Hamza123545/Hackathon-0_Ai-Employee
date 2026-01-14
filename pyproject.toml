@@ -46,8 +46,8 @@ dependencies = [
     # Gold Tier - Task scheduling
     "schedule>=1.2.0",
 
-    # Gold Tier - AI integration
-    "anthropic>=0.18.0",
+    # Gold Tier - AI integration (using Groq instead of Anthropic)
+    "groq>=0.4.0",
 
     # Utilities
     "python-dateutil>=2.8.2",

@@ -5,6 +5,7 @@ Represents a weekly business and accounting audit with cross-domain analysis.
 """
 
 from datetime import date, datetime
+from typing import Optional
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator
