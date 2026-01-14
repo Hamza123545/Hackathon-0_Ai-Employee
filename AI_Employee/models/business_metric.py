@@ -4,7 +4,10 @@ Business Metric Model (Gold Tier)
 Tracks specific business KPIs over time with trend calculation.
 """
 
-from datetime import date, datetime
+from __future__ import annotations
+
+import datetime as dt
+from typing import Optional
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator
@@ -19,7 +22,7 @@ class BusinessMetric(BaseModel):
     
     id: str = Field(default_factory=lambda: str(uuid4()), description="Unique identifier")
     metric_name: str = Field(..., description="Metric name (e.g., 'monthly_revenue', 'social_engagement')")
-    date: date = Field(..., description="Metric date")
+    date: dt.date = Field(..., description="Metric date")
     value: float = Field(..., description="Metric value")
     unit: str = Field(default="", description="Metric unit (USD, percentage, count, etc.)")
     source: str = Field(
@@ -40,7 +43,7 @@ class BusinessMetric(BaseModel):
     change_percentage: float = Field(default=0.0, description="Percentage change from previous period")
     target_value: float | None = Field(default=None, description="Target value if applicable")
     metadata: dict = Field(default_factory=dict, description="Additional context")
-    created_at: datetime = Field(default_factory=datetime.now, description="Metric creation timestamp")
+    created_at: dt.datetime = Field(default_factory=dt.datetime.now, description="Metric creation timestamp")
     
     @field_validator('source')
     @classmethod

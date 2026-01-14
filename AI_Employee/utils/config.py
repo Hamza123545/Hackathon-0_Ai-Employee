@@ -133,10 +133,14 @@ class Config:
         self.auto_process_business = os.getenv(
             'AUTO_PROCESS_BUSINESS', 'true'
         ).lower() in ('true', '1', 'yes')
-        
-        # Claude API for AI-generated insights
+
+        # Groq API for AI-generated insights (replaces Claude/Anthropic)
+        self.groq_api_key = os.getenv('GROQ_API_KEY', '')
+        self.groq_model = os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')
+
+        # Legacy: Keep anthropic_api_key for backward compatibility
         self.anthropic_api_key = os.getenv('ANTHROPIC_API_KEY', '')
-        
+
         # Xero settings
         self.xero_client_id = os.getenv('XERO_CLIENT_ID', '')
         self.xero_client_secret = os.getenv('XERO_CLIENT_SECRET', '')

@@ -41,7 +41,7 @@ class Classifier:
         """
         if self.handbook_path is None:
             # Try to find Company_Handbook.md in common locations
-            from utils.config import Config
+            from .config import Config
             config = Config()
             handbook_path = config.vault_path / "Company_Handbook.md"
         else:

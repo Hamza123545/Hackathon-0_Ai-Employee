@@ -36,7 +36,13 @@
       "Bash(uv --version:*)",
       "Bash(uv venv:*)",
       "Bash(uv pip install:*)",
-      "Bash(uv sync:*)"
+      "Bash(uv sync:*)",
+      "Bash(grep:*)",
+      "Bash($env:PYTHONPATH=\"D:\\\\Hackathon-0_Ai-Employee\\\\AI_Employee\")",
+      "Bash(pushd:*)",
+      "Bash(uv pip list:*)",
+      "Bash(uv run playwright:*)",
+      "Bash(git --version)"
     ]
   }
 }

@@ -108,12 +108,7 @@ def main() -> int:
 
     # Create processor
     try:
-        processor = AIProcessor(
-            config,
-            method=method,
-            check_interval=interval,
-            dry_run=dry_run
-        )
+        processor = AIProcessor(config)
     except Exception as e:
         logger.error(f"Failed to initialize processor: {e}", exc_info=True)
         return 1
@@ -121,9 +116,10 @@ def main() -> int:
     # Run the processor
     logger.info("Starting AI processor... Press Ctrl+C to stop.")
     try:
-        processor.run()
+        processor.start()
     except KeyboardInterrupt:
         logger.info("Shutdown requested")
+        processor.stop()
     except Exception as e:
         logger.error(f"Processor error: {e}", exc_info=True)
         return 1

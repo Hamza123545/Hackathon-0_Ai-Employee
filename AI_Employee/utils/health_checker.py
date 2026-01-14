@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable, Optional
 
-from models.mcp_server_status import MCPServerStatus
+from ..models.mcp_server_status import MCPServerStatus
 
 
 class HealthChecker:

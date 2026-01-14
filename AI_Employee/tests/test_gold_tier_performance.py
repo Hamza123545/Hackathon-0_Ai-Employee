@@ -6,12 +6,13 @@ Performance testing for Gold Tier features:
 - T097: Weekly audit generation completes in under 60 seconds with all data sources
 """
 
-import unittest
-from unittest.mock import Mock, patch
-from pathlib import Path
+import os
 import sys
 import time
+import unittest
 from datetime import date, timedelta
+from pathlib import Path
+from unittest.mock import Mock, patch
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))

@@ -8,11 +8,13 @@ import os
 import sys
 from pathlib import Path
 
+# Set stdout encoding to UTF-8 for Windows compatibility
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from mcp_servers.facebook_mcp_auth import FacebookAuthManager
-from utils.config import Config
 
 
 def test_connection() -> bool:
@@ -24,20 +26,18 @@ def test_connection() -> bool:
     Returns:
         True if connection successful, False otherwise
     """
-    config = Config()
-
-    # Check environment variables
-    app_id = config.facebook_app_id or os.getenv('FACEBOOK_APP_ID', '')
-    app_secret = config.facebook_app_secret or os.getenv('FACEBOOK_APP_SECRET', '')
-    page_id = config.facebook_page_id or os.getenv('FACEBOOK_PAGE_ID', '')
-    instagram_account_id = config.instagram_account_id or os.getenv('INSTAGRAM_ACCOUNT_ID', '')
+    # Check environment variables directly (standalone test)
+    app_id = os.getenv('FACEBOOK_APP_ID', '')
+    app_secret = os.getenv('FACEBOOK_APP_SECRET', '')
+    page_id = os.getenv('FACEBOOK_PAGE_ID', '')
+    instagram_account_id = os.getenv('INSTAGRAM_ACCOUNT_ID', '')
 
     if not app_id or not app_secret:
         print("❌ Facebook credentials not configured (required for Instagram)")
         print("   Set FACEBOOK_APP_ID and FACEBOOK_APP_SECRET environment variables")
         return False
 
-    print(f"✅ Facebook App ID: {app_id[:8]}...")
+    print(f"✅ Facebook App ID: {app_id[:8]}..." if len(app_id) > 8 else f"✅ Facebook App ID: {app_id}")
     print(f"✅ Facebook App Secret: {'*' * 8}...")
 
     if not page_id:
@@ -55,6 +55,8 @@ def test_connection() -> bool:
 
     # Initialize auth manager
     try:
+        from mcp_servers.facebook_mcp_auth import FacebookAuthManager
+
         auth_manager = FacebookAuthManager(
             app_id=app_id,
             app_secret=app_secret
@@ -100,7 +102,7 @@ def test_connection() -> bool:
                 fields="id,username,name,followers_count,media_count,profile_picture_url"
             )
 
-            print(f"✅ Successfully connected to Instagram Graph API")
+            print("✅ Successfully connected to Instagram Graph API")
             print(f"   Username: @{ig_account.get('username', 'N/A')}")
             print(f"   Name: {ig_account.get('name', 'N/A')}")
             print(f"   Followers: {ig_account.get('followers_count', 'N/A')}")

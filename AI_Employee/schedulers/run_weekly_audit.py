@@ -27,7 +27,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
-import anthropic
+from groq import Groq
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -348,35 +348,35 @@ def generate_ai_insights(
     period_end: date
 ) -> dict[str, Any]:
     """
-    Generate AI insights using Claude API.
-    
+    Generate AI insights using Groq API.
+
     Args:
         financial_data: Financial data from Xero
         social_media_data: Social media engagement data
         action_logs_summary: Action logs summary
         period_start: Period start date
         period_end: Period end date
-    
+
     Returns:
         Dictionary with executive_summary, key_insights, recommendations, risks_and_alerts
     """
-    api_key = config.anthropic_api_key
+    api_key = os.getenv('GROQ_API_KEY', '')
     if not api_key:
-        logger.warning("ANTHROPIC_API_KEY not configured, skipping AI insights")
+        logger.warning("GROQ_API_KEY not configured, skipping AI insights")
         return {
-            'executive_summary': f"Week of {period_start} to {period_end}: Business operations summary. [AI insights unavailable - ANTHROPIC_API_KEY not configured]",
+            'executive_summary': f"Week of {period_start} to {period_end}: Business operations summary. [AI insights unavailable - GROQ_API_KEY not configured]",
             'key_insights': [
-                "AI insights generation requires ANTHROPIC_API_KEY configuration",
+                "AI insights generation requires GROQ_API_KEY configuration",
                 "Financial and social media data collected successfully",
                 "Action logs processed for the reporting period"
             ],
             'recommendations': [],
             'risks_and_alerts': []
         }
-    
+
     try:
-        client = anthropic.Anthropic(api_key=api_key)
-        
+        client = Groq(api_key=api_key)
+
         # Build prompt
         prompt = f"""Analyze this business week data ({period_start} to {period_end}) and generate:
 
@@ -398,15 +398,25 @@ Format your response as JSON:
     "risks_and_alerts": ["alert 1", "alert 2", ...]
 }}
 """
-        
-        response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=2000,
-            messages=[{"role": "user", "content": prompt}]
+
+        response = client.chat.completions.create(
+            model=os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile'),
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a business analyst AI assistant. Analyze data and provide actionable insights in JSON format."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.5,
+            max_tokens=2000
         )
-        
+
         # Parse JSON response
-        response_text = response.content[0].text
+        response_text = response.choices[0].message.content
         # Extract JSON from markdown code blocks if present
         if "```json" in response_text:
             json_start = response_text.find("```json") + 7
@@ -416,16 +426,16 @@ Format your response as JSON:
             json_start = response_text.find("```") + 3
             json_end = response_text.find("```", json_start)
             response_text = response_text[json_start:json_end].strip()
-        
+
         insights = json.loads(response_text)
-        
+
         return {
             'executive_summary': insights.get('executive_summary', ''),
             'key_insights': insights.get('key_insights', []),
             'recommendations': insights.get('recommendations', []),
             'risks_and_alerts': insights.get('risks_and_alerts', [])
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to generate AI insights: {e}")
         return {
