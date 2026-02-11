@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  ai-employee:
+    build: .
+    container_name: ai_employee_platinum
+    restart: unless-stopped
+    ports:
+      - "3000:3000" # Web UI
+    volumes:
+      # Sync the Vault folder (Critical for "Sync" feature)
+      - ./AI_Employee:/app/vault
+      # Persist logs
+      - ./logs:/app/logs
+    environment:
+      - VAULT_PATH=/app/vault
+      - HEADLESS=true
+      - TZ=Asia/Kolkata
+    # Shared memory size for browser stability
+    shm_size: '2gb' 

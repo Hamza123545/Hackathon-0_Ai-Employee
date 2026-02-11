@@ -56,9 +56,8 @@ module.exports = {
 
     {
       name: 'whatsapp-watcher',
-      script: './run_watcher.py',
-      args: 'whatsapp',
-      interpreter: 'python',
+      script: 'python',
+      args: '-u -m watchers.whatsapp_watcher',
       cwd: './AI_Employee',
       exec_mode: 'fork',
 
@@ -77,7 +76,8 @@ module.exports = {
         CHECK_INTERVAL: '300',  // 5 minutes
         PYTHONUNBUFFERED: '1',
         LOG_LEVEL: 'INFO',
-        VAULT_PATH: process.env.VAULT_PATH || require('path').resolve(__dirname)
+        VAULT_PATH: process.env.VAULT_PATH || require('path').resolve(__dirname),
+        HEADLESS: process.env.HEADLESS || 'true'
       },
 
       // Logging
@@ -354,6 +354,27 @@ module.exports = {
 
       // Watch disabled
       watch: false
+    },
+
+    // ============================================
+    // AUTONOMOUS AGENT (Platinum Tier - Zone Awareness)
+    // ============================================
+    {
+      name: 'autonomous-agent',
+      script: 'python',
+      args: '-u autonomous_agent.py',
+      cwd: './AI_Employee',
+      exec_mode: 'fork',
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '10s',
+      restart_delay: 5000,
+      watch: false,
+      env: {
+        VAULT_PATH: process.env.VAULT_PATH || require('path').resolve(__dirname),
+        AGENT_MODE: process.env.AGENT_MODE || 'local',
+        PYTHONUNBUFFERED: '1'
+      }
     }
   ]
 };

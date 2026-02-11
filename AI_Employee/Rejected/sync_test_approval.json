@@ -1,0 +1,6 @@
+{
+    "id": "sync_test_approval",
+    "action": "verify_sync",
+    "description": "Please approve this to confirm that the Web UI is effectively reading from the Pending_Approval folder.",
+    "status": "pending"
+}
